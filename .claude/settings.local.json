@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(go list:*)",
+      "Bash(go vet ./cmd/server)",
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
