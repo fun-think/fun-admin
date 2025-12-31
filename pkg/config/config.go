@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -14,7 +15,7 @@ func NewConfig(p string) *viper.Viper {
 	if envConf == "" {
 		envConf = p
 	}
-	fmt.Println("load conf file:", envConf)
+	log.Printf("Loading config file: %s", envConf)
 
 	manager := NewManager(envConf)
 	return manager.GetViper()
@@ -30,46 +31,76 @@ func getConfig(path string) *viper.Viper {
 var Global *Manager
 
 // Init 初始化全局配置管理器
-func Init(configPath string) {
+func Init(configPath string) error {
 	Global = NewManager(configPath)
 
 	// 验证配置
 	if err := Global.Validate(); err != nil {
-		panic("Configuration validation failed: " + err.Error())
+		return fmt.Errorf("configuration validation failed: %w", err)
 	}
+	return nil
 }
 
 // GetManager 获取全局配置管理器
-func GetManager() *Manager {
+func GetManager() (*Manager, error) {
 	if Global == nil {
-		panic("Configuration manager not initialized. Call config.Init() first.")
+		return nil, fmt.Errorf("configuration manager not initialized, call config.Init() first")
 	}
-	return Global
+	return Global, nil
 }
 
 // Get 获取配置值（全局函数）
 func Get(key string) interface{} {
-	return GetManager().Get(key)
+	manager, err := GetManager()
+	if err != nil {
+		return nil
+	}
+	return manager.Get(key)
 }
 
 // GetString 获取字符串配置（全局函数）
 func GetString(key string) string {
-	return GetManager().GetString(key)
+	manager, err := GetManager()
+	if err != nil {
+		return ""
+	}
+	return manager.GetString(key)
 }
 
 // GetInt 获取整数配置（全局函数）
 func GetInt(key string) int {
-	return GetManager().GetInt(key)
+	manager, err := GetManager()
+	if err != nil {
+		return 0
+	}
+	return manager.GetInt(key)
 }
 
 // GetBool 获取布尔配置（全局函数）
 func GetBool(key string) bool {
-	return GetManager().GetBool(key)
+	manager, err := GetManager()
+	if err != nil {
+		return false
+	}
+	return manager.GetBool(key)
 }
 
 // GetDuration 获取时间段配置（全局函数）
 func GetDuration(key string) time.Duration {
-	return GetManager().GetDuration(key)
+	manager, err := GetManager()
+	if err != nil {
+		return 0
+	}
+	return manager.GetDuration(key)
+}
+
+// GetStringSlice 获取字符串切片配置，全局方法
+func GetStringSlice(key string) []string {
+	manager, err := GetManager()
+	if err != nil {
+		return nil
+	}
+	return manager.GetStringSlice(key)
 }
 
 // IsProduction 检查是否为生产环境

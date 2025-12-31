@@ -65,6 +65,9 @@ func InitCache(conf *viper.Viper) cache.CacheManager {
 func InitAdmin(container *container.Container, cache cache.CacheManager, logger *logger.Logger, db *gorm.DB, enforcer *casbin.SyncedEnforcer) {
 	admin.GlobalResourceManager.Register(resources.NewOperationLogResource())
 	admin.GlobalResourceManager.Register(resources.NewUserResource())
+	admin.GlobalResourceManager.Register(resources.NewCrudTableResource())
+	admin.GlobalResourceManager.Register(resources.NewDictionaryTypeResource())
+	admin.GlobalResourceManager.Register(resources.NewDictionaryDataResource())
 }
 
 // EnsureStorage prepares upload directories.

@@ -1,18 +1,18 @@
-export function getMenusApi() {
+export function getMenus() {
   return useGet('/api/admin/menus')
 }
-export function getAdminMenusApi() {
+export function getAdminMenus() {
   return useGet('/api/admin/menus')
 }
-export function createMenuApi(params) {
-  return usePost('/api/admin/menus',params)
+export function createMenu(params) {
+  return usePost('/api/admin/menus', params)
 }
-export function getMenuApi(id) {
+export function getMenu(id) {
   return useGet(`/api/admin/menus/${id}`)
 }
-export function updateMenuApi(id, params) {
+export function updateMenu(id, params) {
   return usePut(`/api/admin/menus/${id}`, params)
 }
-export function deleteMenuApi(id) {
+export function deleteMenu(id) {
   return useDelete(`/api/admin/menus/${id}`)
 }

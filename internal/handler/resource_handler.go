@@ -23,10 +23,7 @@ func NewResourceHandler(repo *repository.ResourceRepository) *ResourceHandler {
 // GlobalSearch 全局搜索
 func (h *ResourceHandler) GlobalSearch(c *gin.Context) {
 	keyword := c.Query("keyword")
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	if keyword == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -60,10 +57,7 @@ func (h *ResourceHandler) GlobalSearch(c *gin.Context) {
 // ListResources 获取所有资源列表
 func (h *ResourceHandler) ListResources(c *gin.Context) {
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	resources := admin.GlobalResourceManager.GetResources()
 	pages := admin.GlobalResourceManager.GetPages()
@@ -153,10 +147,7 @@ func (h *ResourceHandler) GetResource(c *gin.Context) {
 	slug := c.Param("slug")
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	// 先尝试查找资源
 	resource := admin.GlobalResourceManager.GetResourceBySlug(slug)

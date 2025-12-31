@@ -1,37 +1,56 @@
 env: local
 http:
-  #  host: 0.0.0.0
   host: 127.0.0.1
   port: 8001
+  cors:
+    allowed_origins:
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed_headers:
+      - Content-Type
+      - Authorization
+      - Accept
+      - X-Requested-With
+    allow_credentials: false
+    max_age: 2h
 security:
   api_sign:
-    app_key: 123456
-    app_security: 123456
+    app_key: my_local_api_key_change_in_production
+    app_security: my_local_api_secret_change_in_production
   jwt:
-    key: QQYnRFerJTSEcrfB89fw8prOaObmrch8
+    key: my_local_jwt_secret_key_here_at_least_32_characters_long
+    expire_hours: 2160 # 90 days
 data:
   db:
-  #    user:
-  #     driver: sqlite
-  #     dsn: storage/nunu-test.db?_busy_timeout=5000
     user:
-      driver: mysql
-      dsn: root:root@tcp(192.168.10.185:3306)/go-admin?charset=utf8mb4&parseTime=True&loc=Local
-  #    user:
-  #      driver: postgres
-  #      dsn: host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=Asia/Shanghai
+      driver: sqlite
+      dsn: storage/local.db?_busy_timeout=5000
   redis:
-    addr: 192.168.10.185:6379
-    password: "root"
+    addr: 127.0.0.1:6379
+    password: ""
     db: 0
     read_timeout: 0.2s
     write_timeout: 0.2s
-
-log:
-  log_level: debug
-  encoding: console           # json or console
-  log_file_name: "./storage/logs/server.logger"
-  max_backups: 30
-  max_age: 7
-  max_size: 1024
-  compress: true
+storage:
+  default: local
+  disks:
+    local:
+      driver: local
+      base_path: storage/uploads
+      domain: http://127.0.0.1:8001/uploads
+logger:
+  level: debug
+  encoding: console
+  file:
+    enabled: true
+    path: ./storage/logs/server.log
+    max_backups: 30
+    max_age: 7
+    max_size: 1024
+    compress: true

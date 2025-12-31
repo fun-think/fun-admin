@@ -1,18 +1,15 @@
-export function getUserInfoApi() {
-  return useGet('/api/admin/profile')
+export function getUsers(params) {
+  return useGet('/api/admin/v1/users', params)
 }
-export function getUsersApi(params) {
-  return useGet('/api/admin/users',params)
+export function createUser(params) {
+  return usePost('/api/admin/v1/users', params)
 }
-export function createUserApi(params) {
-  return usePost('/api/admin/users',params)
+export function getUser(id) {
+  return useGet(`/api/admin/v1/users/${id}`)
 }
-export function getUserApi(id) {
-  return useGet(`/api/admin/users/${id}`)
+export function updateUser(id, params) {
+  return usePut(`/api/admin/v1/users/${id}`, params)
 }
-export function updateUserApi(id, params) {
-  return usePut(`/api/admin/users/${id}`, params)
-}
-export function deleteUserApi(id) {
-  return useDelete(`/api/admin/users/${id}`)
+export function deleteUser(id) {
+  return useDelete(`/api/admin/v1/users/${id}`)
 }

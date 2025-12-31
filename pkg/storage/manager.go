@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -54,7 +55,7 @@ func (m *Manager) Default() Storage {
 func NewFromConfig(config Config) (Storage, error) {
 	switch config.Type {
 	case "local":
-		return NewLocalStorage(config.Extra["base_path"], config.Domain), nil
+		return NewLocalStorage(config.Extra["base_path"], config.Domain)
 	case "oss":
 		return NewOssStorage(config.Endpoint, config.AccessID, config.AccessKey, config.Bucket, config.Domain)
 	// S3存储暂未实现
@@ -77,7 +78,7 @@ func (m *Manager) Upload(ctx context.Context, key string, reader interface{}, co
 	case io.Reader:
 		r = v
 	case []byte:
-		r = nil // TODO: 实现字节流转换
+		r = bytes.NewReader(v)
 	default:
 		return nil, fmt.Errorf("不支持的reader类型")
 	}

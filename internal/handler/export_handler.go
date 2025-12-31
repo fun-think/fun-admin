@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fun-admin/internal/service"
 	"go.uber.org/zap"
 	"net/http"
@@ -101,7 +102,8 @@ func (h *ExportHandler) ExportData(c *gin.Context) {
 			zap.Error(err))
 
 		// 检查是否为资源未找到错误
-		if _, ok := err.(*service.ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": "资源不存在",
@@ -111,7 +113,7 @@ func (h *ExportHandler) ExportData(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": "导出失败: " + err.Error(),
+			"message": messageWithDebugError("导出失败", err),
 		})
 		return
 	}

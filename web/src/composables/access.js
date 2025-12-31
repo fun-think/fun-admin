@@ -10,7 +10,8 @@ export function useAccess() {
     return roleArr.some(role => accessRoles?.includes(role))
   }
   const hasPermission = (perm) => {
-    if (!perm) return true
+    if (!perm)
+      return true
     const list = toArray(perm).flat(1)
     return list.some(p => permissions.value?.includes(p))
   }

@@ -3,9 +3,7 @@ package docs
 import (
 	"encoding/json"
 	"fmt"
-	"fun-admin/internal/handler"
 	"fun-admin/internal/model"
-	"fun-admin/internal/service"
 	"fun-admin/pkg/admin"
 	"io/ioutil"
 	"os"
@@ -449,14 +447,14 @@ func (dg *DocumentGenerator) generateCommonDefinitions() {
 	}
 
 	// 从 model 包中直接引用核心业务模型
-	dg.addModelDefinition("User", &model.SysUser{})
-	dg.addModelDefinition("Role", &model.SysRole{})
-	dg.addModelDefinition("Menu", &model.SysMenu{})
-	dg.addModelDefinition("Api", &model.SysApi{})
-	dg.addModelDefinition("OperationLog", &model.SysOperationLog{})
-	dg.addModelDefinition("DictionaryType", &model.AdminDictionaryType{})
-	dg.addModelDefinition("DictionaryData", &model.AdminDictionaryData{})
-	dg.addModelDefinition("Config", &model.AdminSetting{})
+	dg.addModelDefinition("User", &model.User{})
+	dg.addModelDefinition("Role", &model.Role{})
+	dg.addModelDefinition("Menu", &model.Menu{})
+	dg.addModelDefinition("Api", &model.Api{})
+	dg.addModelDefinition("OperationLog", &model.OperationLog{})
+	dg.addModelDefinition("DictionaryType", &model.DictionaryType{})
+	dg.addModelDefinition("DictionaryData", &model.DictionaryData{})
+	dg.addModelDefinition("Config", &model.Config{})
 }
 
 // addModelDefinition 根据 Go 结构体自动生成 Swagger 模型定义

@@ -1,6 +1,6 @@
-import { usePost } from '~/utils/request'
+import { usePost } from '@/utils/request.js'
 
-export function loginApi(params) {
+export function login(params) {
   return usePost('/api/admin/login', params, {
     // 设置为false的时候不会携带token
     token: false,

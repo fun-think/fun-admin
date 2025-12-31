@@ -1,4 +1,4 @@
-import { useGet, usePost, usePut } from '~/utils/request'
+import { useGet, usePost, usePut } from '@/utils/request.js'
 
 // 获取系统配置
 export async function getSystemConfig() {
@@ -30,7 +30,7 @@ export async function sendTestEmail(to, subject, content) {
   return usePost('/api/admin/config/email/send-test', {
     to,
     subject,
-    content
+    content,
   })
 }
 
@@ -83,10 +83,10 @@ export async function exportConfig() {
 export async function importConfig(file) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   return usePost('/api/admin/configs/import', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+      'Content-Type': 'multipart/form-data',
+    },
   })
 }

@@ -2,19 +2,16 @@
 import { AlipayCircleFilled, LockOutlined, MobileOutlined, TaobaoCircleFilled, UserOutlined, WeiboCircleFilled } from '@ant-design/icons-vue'
 import { delayTimer } from '@v-c/utils'
 import { AxiosError } from 'axios'
-import GlobalLayoutFooter from '~/layouts/components/global-footer/index.vue'
-import { loginApi, sendSMSCodeApi } from '~/api/common/login'
-import { getQueryParam } from '~/utils/tools'
+import GlobalLayoutFooter from '@/layouts/components/global-footer/index.vue'
+import { login } from '@/api/login'
+import { getQueryParam } from '@/utils/tools'
 import pageBubble from '@/utils/page-bubble'
-import { useUserStore } from '~/stores/user'
-import { useAuthorization } from '~/composables/authorization'
 
 const message = useMessage()
 const notification = useNotification()
 const appStore = useAppStore()
 const { layoutSetting } = storeToRefs(appStore)
 const router = useRouter()
-const userStore = useUserStore()
 const token = useAuthorization()
 const loginModel = reactive({
   username: void 0,
@@ -45,17 +42,15 @@ async function getCode() {
   codeLoading.value = true
   try {
     await formRef.value.validate(['mobile'])
-    // 调用发送验证码接口
-    await sendSMSCodeApi({ mobile: loginModel.mobile })
-    reset()
-    resume()
-    codeLoading.value = false
-    message.success(t('pages.login.phoneLogin.codeSent'))
+    setTimeout(() => {
+      reset()
+      resume()
+      codeLoading.value = false
+      message.success('验证码是：123456')
+    }, 3e3)
   }
   catch (error) {
     codeLoading.value = false
-    console.error('发送验证码失败:', error)
-    message.error(t('pages.login.phoneLogin.codeSendFailed'))
   }
 }
 async function submit() {
@@ -67,33 +62,27 @@ async function submit() {
       params = {
         username: loginModel.username,
         password: loginModel.password,
-        type: 'account'
       }
     }
     else {
       params = {
         mobile: loginModel.mobile,
         code: loginModel.code,
-        type: 'mobile'
+        type: 'mobile',
       }
     }
-    const { data } = await loginApi(params)
-    // 直接设置token，让useAuthorization处理Bearer前缀
+    const { data } = await login(params)
     token.value = data?.accessToken
-    // 设置用户信息
-    userStore.setUser(data?.userInfo)
     notification.success({
       message: '登录成功',
       description: '欢迎回来！',
       duration: 3,
     })
-    // 修复跳转逻辑
-    const redirect = getQueryParam('redirect')
-    if (redirect) {
-      router.push({ path: redirect, replace: true })
-    } else {
-      router.push({ path: '/admin/dashboard', replace: true })
-    }
+    const redirect = getQueryParam('redirect', '/')
+    router.push({
+      path: redirect,
+      replace: true,
+    })
   }
   catch (e) {
     if (e instanceof AxiosError)
@@ -118,9 +107,7 @@ onBeforeUnmount(() => {
     <div class="login-content flex-center">
       <div class="ant-pro-form-login-main rounded">
         <!-- 登录头部 -->
-        <div
-          class="flex-between h-15 px-4 mb-[2px]"
-        >
+        <div class="flex-between h-15 px-4 mb-[2px]">
           <div class="flex-end">
             <span class="ant-pro-form-login-logo">
               <img w-full h-full object-cover src="/logo.svg">

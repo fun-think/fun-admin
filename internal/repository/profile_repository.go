@@ -81,7 +81,7 @@ func (r *profileRepository) UpdatePassword(ctx context.Context, userID uint, new
 		return err
 	}
 
-	// 更新密码（此处未加密，实际项目中应该加密处理）
+	// 更新密码
 	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", userID).Update("password", newPassword).Error; err != nil {
 		r.logger.Error("更新密码失败", zap.Error(err))
 		return err

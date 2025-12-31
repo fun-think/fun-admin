@@ -19,6 +19,7 @@ type OperationLogServiceInterface interface {
 	DeleteOperationLog(ctx context.Context, id uint) error
 	DeleteOperationLogs(ctx context.Context, ids []uint) error
 	ClearOperationLogs(ctx context.Context) error
+	GetOperationLogStats(ctx context.Context) (*OperationLogStats, error)
 }
 
 // NewOperationLogService 创建操作日志服务
@@ -55,4 +56,46 @@ func (s *OperationLogService) DeleteOperationLogs(ctx context.Context, ids []uin
 // ClearOperationLogs 清空操作日志
 func (s *OperationLogService) ClearOperationLogs(ctx context.Context) error {
 	return s.operationLogRepo.ClearOperationLogs(ctx)
+}
+
+// CountStat 统计项
+type CountStat struct {
+	Key   string `json:"key"`
+	Count int64  `json:"count"`
+}
+
+// OperationLogStats 日志统计
+type OperationLogStats struct {
+	Total        int64            `json:"total"`
+	Today        int64            `json:"today"`
+	LastSeven    int64            `json:"last_seven"`
+	MethodCounts map[string]int64 `json:"method_counts"`
+	StatusCounts map[string]int64 `json:"status_counts"`
+	TopResources []CountStat      `json:"top_resources"`
+	TopUsers     []CountStat      `json:"top_users"`
+}
+
+// GetOperationLogStats 返回统计信息
+func (s *OperationLogService) GetOperationLogStats(ctx context.Context) (*OperationLogStats, error) {
+	result, err := s.operationLogRepo.GetOperationLogStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &OperationLogStats{
+		Total:        result.Total,
+		Today:        result.Today,
+		LastSeven:    result.LastSeven,
+		MethodCounts: result.MethodCounts,
+		StatusCounts: result.StatusCounts,
+		TopResources: make([]CountStat, len(result.TopResources)),
+		TopUsers:     make([]CountStat, len(result.TopUsers)),
+	}
+	for i, item := range result.TopResources {
+		stats.TopResources[i] = CountStat{Key: item.Key, Count: item.Count}
+	}
+	for i, item := range result.TopUsers {
+		stats.TopUsers[i] = CountStat{Key: item.Key, Count: item.Count}
+	}
+	return stats, nil
 }

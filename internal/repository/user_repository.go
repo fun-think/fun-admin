@@ -54,6 +54,9 @@ func (r *userRepository) GetUsers(ctx context.Context, req *v1.GetUsersRequest) 
 	var list []*model.User
 	db := r.db.Model(&model.User{}).Order("id DESC")
 
+	if req.ID != 0 {
+		db = db.Where("id = ?", req.ID)
+	}
 	if req.Username != "" {
 		db = db.Where("username LIKE ?", "%"+req.Username+"%")
 	}

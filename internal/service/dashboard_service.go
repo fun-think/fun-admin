@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fun-admin/internal/repository"
+	"fun-admin/pkg/admin/i18n"
 	"fun-admin/pkg/cache"
 	"time"
 
@@ -51,14 +52,14 @@ func (s *DashboardService) GetDashboardStats(ctx context.Context, language strin
 	}
 	stats["user_count"] = userCount
 
-	// 获取部门总数
+	// 获取部门总数 (已移除相关表)
 	departmentCount, err := s.dashboardRepo.GetDepartmentCount(ctx)
 	if err != nil {
 		return nil, err
 	}
 	stats["department_count"] = departmentCount
 
-	// 获取文章总数
+	// 获取文章总数 (已移除相关表)
 	postCount, err := s.dashboardRepo.GetPostCount(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (s *DashboardService) GetDashboardStats(ctx context.Context, language strin
 	}
 	stats["recent_users"] = recentUsers
 
-	// 获取文章状态统计
+	// 获取文章状态统计 (已移除相关表)
 	postStats, err := s.GetPostStatusStats(ctx, language)
 	if err != nil {
 		return nil, err
@@ -92,6 +93,12 @@ func (s *DashboardService) GetDashboardStats(ctx context.Context, language strin
 		return nil, err
 	}
 	stats["system_info"] = systemInfo
+
+	// 添加标签翻译
+	stats["user_count_label"] = i18n.Translate(language, "dashboard.user_count")
+	stats["department_count_label"] = i18n.Translate(language, "dashboard.department_count")
+	stats["post_count_label"] = i18n.Translate(language, "dashboard.post_count")
+	stats["role_count_label"] = i18n.Translate(language, "dashboard.role_count")
 
 	return stats, nil
 }
@@ -131,6 +138,20 @@ func (s *DashboardService) GetPostStatusStats(ctx context.Context, language stri
 	if err != nil {
 		return nil, err
 	}
+
+	// 添加标签翻译
+	languageMap := map[string]string{
+		"zh-CN": "zh-CN",
+		"en":    "en-US",
+	}[language]
+
+	if languageMap == "" {
+		languageMap = "zh-CN"
+	}
+
+	stats["published_label"] = i18n.Translate(languageMap, "dashboard.published")
+	stats["draft_label"] = i18n.Translate(languageMap, "dashboard.draft")
+	stats["archived_label"] = i18n.Translate(languageMap, "dashboard.archived")
 
 	// 缓存数据
 	s.cache.Set(ctx, cacheKey, stats, time.Hour)

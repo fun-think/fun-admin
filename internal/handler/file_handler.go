@@ -1,9 +1,10 @@
 package handler
 
 import (
+	v1 "fun-admin/api/v1"
 	"fun-admin/internal/service"
 	"fun-admin/pkg/logger"
-	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -16,51 +17,110 @@ type FileHandler struct {
 }
 
 // NewFileHandler 创建文件处理器
-func NewFileHandler(logger *logger.Logger) *FileHandler {
+func NewFileHandler(logger *logger.Logger, fileService *service.FileService) *FileHandler {
 	return &FileHandler{
-		fileService: service.NewFileService(logger),
+		fileService: fileService,
 		logger:      logger,
 	}
 }
 
-// UploadHandler 处理文件上传请求
-func UploadHandler(c *gin.Context) {
-	// 获取上传的文件
+// Upload 上传文件
+func (h *FileHandler) Upload(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "获取上传文件失败: " + err.Error(),
-		})
+		v1.HandleValidationError(c, "获取上传文件失败")
 		return
 	}
 
-	// 获取允许的文件类型参数
 	allowedTypesStr := c.PostForm("allowed_types")
 	var allowedTypes []string
 	if allowedTypesStr != "" {
 		allowedTypes = strings.Split(allowedTypesStr, ",")
 	}
 
-	// 获取最大文件大小参数（默认10MB）
 	maxSize := int64(10 * 1024 * 1024)
 	if maxSizeStr := c.PostForm("max_size"); maxSizeStr != "" {
-		// 这里应该解析 maxSizeStr 为 int64，但为简化处理，我们使用默认值
+		if parsed, parseErr := strconv.ParseInt(maxSizeStr, 10, 64); parseErr == nil {
+			maxSize = parsed
+		}
 	}
 
-	// 上传文件
-	fileInfo, err := service.NewFileService(nil).UploadFile(file, allowedTypes, maxSize)
+	storageType := c.PostForm("storage_type")
+	pathPrefix := c.PostForm("path")
+
+	fileInfo, err := h.fileService.UploadFileWithOptions(c, file, allowedTypes, maxSize, storageType, pathPrefix)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "文件上传失败: " + err.Error(),
-		})
+		v1.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "文件上传成功",
-		"data":    fileInfo,
+	v1.HandleSuccess(c, fileInfo)
+}
+
+// List 返回文件列表
+func (h *FileHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	storageType := c.Query("storage_type")
+
+	files, total, err := h.fileService.ListFiles(c, storageType, page, pageSize)
+	if err != nil {
+		v1.HandleError(c, err)
+		return
+	}
+
+	v1.HandleSuccess(c, gin.H{
+		"list":  files,
+		"total": total,
+	})
+}
+
+// Info 返回文件元信息
+func (h *FileHandler) Info(c *gin.Context) {
+	key := c.Query("key")
+	if key == "" {
+		v1.HandleValidationError(c, "key 参数不能为空")
+		return
+	}
+	storageType := c.Query("storage_type")
+
+	info, err := h.fileService.GetFileInfo(c, storageType, key)
+	if err != nil {
+		v1.HandleError(c, err)
+		return
+	}
+
+	v1.HandleSuccess(c, info)
+}
+
+// Delete 删除文件
+func (h *FileHandler) Delete(c *gin.Context) {
+	var req struct {
+		Keys        []string `json:"keys"`
+		StorageType string   `json:"storage_type"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 兼容通过 query 传递的 key
+		key := c.Query("key")
+		if key != "" {
+			req.Keys = []string{key}
+			req.StorageType = c.Query("storage_type")
+		}
+	}
+
+	if len(req.Keys) == 0 {
+		v1.HandleValidationError(c, "缺少要删除的文件 key")
+		return
+	}
+
+	for _, key := range req.Keys {
+		if err := h.fileService.DeleteFileWithContext(c, req.StorageType, key); err != nil {
+			v1.HandleError(c, err)
+			return
+		}
+	}
+
+	v1.HandleSuccess(c, gin.H{
+		"deleted": len(req.Keys),
 	})
 }

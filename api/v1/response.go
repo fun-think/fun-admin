@@ -42,13 +42,14 @@ type GetUsersResponseData struct {
 
 // UserDataItem 用户数据项
 type UserDataItem struct {
-	ID        uint   `json:"id"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
-	Username  string `json:"username"`
-	Nickname  string `json:"nickname"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
+	ID        uint     `json:"id"`
+	CreatedAt string   `json:"createdAt"`
+	UpdatedAt string   `json:"updatedAt"`
+	Username  string   `json:"username"`
+	Nickname  string   `json:"nickname"`
+	Phone     string   `json:"phone"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
 }
 
 // GetUserResponseData 获取用户详情响应数据
@@ -70,7 +71,7 @@ type ErrorResponse struct {
 	Details string `json:"details,omitempty"`
 }
 
-// HandleSuccess 成功响应
+// HandleSuccess 处理成功响应
 func HandleSuccess(ctx *gin.Context, data interface{}) {
 	ctx.JSON(http.StatusOK, Response{
 		Code:    0,
@@ -79,57 +80,64 @@ func HandleSuccess(ctx *gin.Context, data interface{}) {
 	})
 }
 
-// HandleError 处理错误响应
+// HandleError 处理通用错误响应
 func HandleError(ctx *gin.Context, err error) {
-	// 这里可以根据错误类型返回不同的错误码和消息
-	ctx.JSON(http.StatusOK, Response{
-		Code:    1,
-		Message: "error",
-		Data:    err.Error(),
-	})
+	resp := Response{
+		Code:    http.StatusInternalServerError,
+		Message: "服务器内部错误",
+		Data:    nil,
+	}
+	if gin.Mode() == gin.DebugMode && err != nil {
+		resp.Message = err.Error()
+	}
+	ctx.JSON(http.StatusInternalServerError, resp)
 }
 
-// HandleValidationError 处理验证错误
+// HandleValidationError 处理校验错误
 func HandleValidationError(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusOK, Response{
-		Code:    400,
-		Message: "参数验证失败",
-		Data:    message,
+	ctx.JSON(http.StatusBadRequest, Response{
+		Code:    http.StatusBadRequest,
+		Message: "参数校验失败: " + message,
+		Data:    nil,
 	})
 }
 
-// HandleUnauthorized 未授权错误
+// HandleUnauthorized 未授权响应
 func HandleUnauthorized(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, Response{
-		Code:    401,
-		Message: "未授权访问",
-		Data:    "请先登录",
+	ctx.JSON(http.StatusUnauthorized, Response{
+		Code:    http.StatusUnauthorized,
+		Message: "未授权访问: 请先登录",
+		Data:    nil,
 	})
 }
 
-// HandleForbidden 禁止访问错误
+// HandleForbidden 禁止访问响应
 func HandleForbidden(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, Response{
-		Code:    403,
-		Message: "禁止访问",
-		Data:    "您没有权限执行此操作",
+	ctx.JSON(http.StatusForbidden, Response{
+		Code:    http.StatusForbidden,
+		Message: "禁止访问: 您没有权限执行此操作",
+		Data:    nil,
 	})
 }
 
-// HandleNotFound 资源未找到错误
+// HandleNotFound 资源未找到响应
 func HandleNotFound(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, Response{
-		Code:    404,
-		Message: "资源未找到",
-		Data:    "请求的资源不存在",
+	ctx.JSON(http.StatusNotFound, Response{
+		Code:    http.StatusNotFound,
+		Message: "资源未找到: 请求的资源不存在",
+		Data:    nil,
 	})
 }
 
 // HandleServerError 服务器内部错误
 func HandleServerError(ctx *gin.Context, err error) {
-	ctx.JSON(http.StatusOK, Response{
-		Code:    500,
-		Message: "服务器内部错误",
-		Data:    err.Error(),
+	message := "服务器内部错误"
+	if gin.Mode() == gin.DebugMode && err != nil {
+		message = message + ": " + err.Error()
+	}
+	ctx.JSON(http.StatusInternalServerError, Response{
+		Code:    http.StatusInternalServerError,
+		Message: message,
+		Data:    nil,
 	})
 }

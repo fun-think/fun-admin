@@ -1,27 +1,27 @@
-import { usePost, useGet } from '~/utils/request'
+import { useGet, usePost } from '@/utils/request.js'
 
 // 数据导入 - Excel
 export async function importExcel(file, options = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   if (options.resource) {
     formData.append('resource', options.resource)
   }
-  
+
   if (options.mapping) {
     formData.append('mapping', JSON.stringify(options.mapping))
   }
-  
+
   if (options.skipHeader) {
     formData.append('skip_header', options.skipHeader ? '1' : '0')
   }
-  
+
   return usePost(`/api/admin/import/${options.resource}`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'multipart/form-data',
     },
-    ...options
+    ...options,
   })
 }
 
@@ -29,28 +29,28 @@ export async function importExcel(file, options = {}) {
 export async function importCSV(file, options = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   if (options.resource) {
     formData.append('resource', options.resource)
   }
-  
+
   if (options.delimiter) {
     formData.append('delimiter', options.delimiter)
   }
-  
+
   if (options.mapping) {
     formData.append('mapping', JSON.stringify(options.mapping))
   }
-  
+
   if (options.skipHeader) {
     formData.append('skip_header', options.skipHeader ? '1' : '0')
   }
-  
+
   return usePost(`/api/admin/import/${options.resource}`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'multipart/form-data',
     },
-    ...options
+    ...options,
   })
 }
 
@@ -58,16 +58,16 @@ export async function importCSV(file, options = {}) {
 export async function importJSON(file, options = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   if (options.resource) {
     formData.append('resource', options.resource)
   }
-  
+
   return usePost(`/api/admin/import/${options.resource}`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'multipart/form-data',
     },
-    ...options
+    ...options,
   })
 }
 
@@ -100,6 +100,6 @@ export async function retryImportTask(taskId) {
 export async function getFieldMapping(resource, fileHeaders) {
   return usePost('/api/admin/import/mapping', {
     resource,
-    file_headers: fileHeaders
+    file_headers: fileHeaders,
   })
 }

@@ -9,6 +9,7 @@ import (
 
 type ApiService interface {
 	GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1.GetApisResponseData, error)
+	GetApi(ctx context.Context, id uint) (*v1.ApiDataItem, error)
 	ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) error
 	ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) error
 	ApiDelete(ctx context.Context, id uint) error
@@ -27,6 +28,23 @@ func NewApiService(
 type apiService struct {
 	*Service
 	apiRepository repository.ApiRepository
+}
+
+func (s *apiService) GetApi(ctx context.Context, id uint) (*v1.ApiDataItem, error) {
+	api, err := s.apiRepository.GetApi(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	data := &v1.ApiDataItem{
+		CreatedAt: api.CreatedAt.Format("2006-01-02 15:04:05"),
+		Group:     api.Group,
+		ID:        api.ID,
+		Method:    api.Method,
+		Name:      api.Name,
+		Path:      api.Path,
+		UpdatedAt: api.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return data, nil
 }
 
 func (s *apiService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1.GetApisResponseData, error) {

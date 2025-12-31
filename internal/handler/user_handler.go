@@ -36,7 +36,7 @@ func NewUserHandler(
 func (h *UserHandler) UserUpdate(ctx *gin.Context) {
 	var req v1.UserUpdateRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, err)
+		v1.HandleValidationError(ctx, err.Error())
 		return
 	}
 	if err := h.userService.UserUpdate(ctx, &req); err != nil {
@@ -60,7 +60,7 @@ func (h *UserHandler) UserUpdate(ctx *gin.Context) {
 func (h *UserHandler) UserCreate(ctx *gin.Context) {
 	var req v1.UserCreateRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, err)
+		v1.HandleValidationError(ctx, err.Error())
 		return
 	}
 	if err := h.userService.UserCreate(ctx, &req); err != nil {
@@ -84,7 +84,7 @@ func (h *UserHandler) UserCreate(ctx *gin.Context) {
 func (h *UserHandler) UserDelete(ctx *gin.Context) {
 	var req v1.UserDeleteRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, err)
+		v1.HandleValidationError(ctx, err.Error())
 		return
 	}
 	if err := h.userService.UserDelete(ctx, req.ID); err != nil {
@@ -105,6 +105,7 @@ func (h *UserHandler) UserDelete(ctx *gin.Context) {
 // @Security Bearer
 // @Param page query int true "页码"
 // @Param pageSize query int true "每页数量"
+// @Param id query int false "用户ID"
 // @Param username query string false "用户名"
 // @Param nickname query string false "昵称"
 // @Param phone query string false "手机号"
@@ -114,7 +115,7 @@ func (h *UserHandler) UserDelete(ctx *gin.Context) {
 func (h *UserHandler) GetUsers(ctx *gin.Context) {
 	var req v1.GetUsersRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, err)
+		v1.HandleValidationError(ctx, err.Error())
 		return
 	}
 	data, err := h.userService.GetUsers(ctx, &req)

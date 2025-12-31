@@ -16,6 +16,11 @@ export function useCompConsumer() {
       return node
     }
     const Comp = createVNode(node)
+    // Check if Comp.type is a symbol before trying to assign properties to it
+    if (typeof Comp.type === 'symbol') {
+      // If it's a symbol, we can't add properties to it, so we return the component as is
+      return component
+    }
     if (!Comp.type)
       Comp.type = {}
     Comp.type.name = routeName

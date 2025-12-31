@@ -1,4 +1,4 @@
-import { useGet, usePost, usePut, useDelete } from '~/utils/request'
+import { useDelete, useGet, usePost, usePut } from '@/utils/request.js'
 
 // 获取所有资源列表（支持 language 参数）
 export async function getResourceList(params = {}) {
@@ -25,13 +25,14 @@ export async function createResourceRecord(slug, data, params = {}) {
   try {
     const response = await usePost(`/api/admin/resource-crud/${slug}`, data, params)
     return response
-  } catch (error) {
+  }
+  catch (error) {
     // 处理验证错误
     if (error.response && error.response.status === 422) {
       return {
         code: 422,
         message: '数据验证失败',
-        errors: error.response.data.errors
+        errors: error.response.data.errors,
       }
     }
     throw error
@@ -43,13 +44,14 @@ export async function updateResourceRecord(slug, id, data, params = {}) {
   try {
     const response = await usePut(`/api/admin/resource-crud/${slug}/${id}`, data, params)
     return response
-  } catch (error) {
+  }
+  catch (error) {
     // 处理验证错误
     if (error.response && error.response.status === 422) {
       return {
         code: 422,
         message: '数据验证失败',
-        errors: error.response.data.errors
+        errors: error.response.data.errors,
       }
     }
     throw error

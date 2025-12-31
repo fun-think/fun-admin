@@ -101,6 +101,31 @@ func (h *ApiHandler) ApiUpdate(ctx *gin.Context) {
 	v1.HandleSuccess(ctx, nil)
 }
 
+// ApiGet godoc
+// @Summary 获取单个API
+// @Schemes
+// @Description 获取单个API信息
+// @Tags API模块
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "API ID"
+// @Success 200 {object} v1.Response
+// @Router /v1/admin/api/{id} [get]
+func (h *ApiHandler) ApiGet(ctx *gin.Context) {
+	var req v1.ApiDeleteRequest // Reuse ApiDeleteRequest as it only contains ID field
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		v1.HandleError(ctx, err)
+		return
+	}
+	data, err := h.apiService.GetApi(ctx, req.ID)
+	if err != nil {
+		v1.HandleError(ctx, err)
+		return
+	}
+	v1.HandleSuccess(ctx, data)
+}
+
 // ApiDelete godoc
 // @Summary 删除API
 // @Schemes

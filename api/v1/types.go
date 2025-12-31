@@ -16,6 +16,7 @@ type LoginResponse struct {
 type GetUsersRequest struct {
 	Page     int    `form:"page" binding:"required" example:"1"`
 	PageSize int    `form:"pageSize" binding:"required" example:"10"`
+	ID       uint   `form:"id" binding:"" example:"1"`
 	Username string `json:"username" binding:"" example:"张三"`
 	Nickname string `json:"nickname" binding:"" example:"小Baby"`
 	Phone    string `form:"phone" binding:"" example:"1858888888"`

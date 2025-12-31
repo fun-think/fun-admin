@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"fun-admin/internal/repository"
 	"fun-admin/pkg/admin"
@@ -42,6 +43,11 @@ func (s *ResourceService) Create(ctx context.Context, resourceSlug string, data 
 			return nil, err
 		}
 	}
+	permittedData, err := s.enforceWritableFields(ctx, resource, data)
+	if err != nil {
+		return nil, err
+	}
+	data = permittedData
 	if hook, ok := resource.(admin.CreateHook); ok {
 		if err := hook.BeforeCreate(ctx, data); err != nil {
 			return nil, err
@@ -74,6 +80,11 @@ func (s *ResourceService) Update(ctx context.Context, resourceSlug string, id in
 			return err
 		}
 	}
+	permittedData, err := s.enforceWritableFields(ctx, resource, data)
+	if err != nil {
+		return err
+	}
+	data = permittedData
 	if hook, ok := resource.(admin.UpdateHook); ok {
 		if err := hook.BeforeUpdate(ctx, id, data); err != nil {
 			return err
@@ -155,46 +166,55 @@ func (s *ResourceService) DeleteBatch(ctx context.Context, resourceSlug string, 
 
 // Get 获取资源记录详情
 func (s *ResourceService) Get(ctx context.Context, resourceSlug string, id interface{}) (map[string]interface{}, error) {
-	// 检查缓存
-	cacheKey := s.getRecordCacheKey(resourceSlug, id)
-	if cached, err := s.cacheManager.Get(ctx, cacheKey); err == nil && cached != nil {
-		if result, ok := cached.(map[string]interface{}); ok {
-			return result, nil
-		}
-	}
 
-	// 获取资源配置
 	resource := s.resourceManager.GetResourceBySlug(resourceSlug)
+
 	if resource == nil {
+
 		return nil, &ResourceNotFoundError{ResourceSlug: resourceSlug}
+
 	}
 
-	// 获取关联字段信息
+	cacheKey := s.getRecordCacheKey(resourceSlug, id)
+
+	if cached, err := s.cacheManager.Get(ctx, cacheKey); err == nil && cached != nil {
+
+		if result, ok := cached.(map[string]interface{}); ok {
+
+			return s.filterReadableRecord(ctx, resource, result), nil
+
+		}
+
+	}
+
 	relationships := s.getRelationships(resource)
 
-	// 获取记录（包含关联数据）
+	var (
+		result map[string]interface{}
+
+		err error
+	)
+
 	if len(relationships) > 0 {
-		result, err := s.resourceRepository.FindByIDWithRelationships(ctx, resourceSlug, id, relationships)
-		if err != nil {
-			return nil, err
-		}
 
-		// 缓存结果
-		s.cacheManager.Set(ctx, cacheKey, result, cache.DefaultExpiration)
+		result, err = s.resourceRepository.FindByIDWithRelationships(ctx, resourceSlug, id, relationships)
 
-		return result, nil
+	} else {
+
+		result, err = s.resourceRepository.FindByID(ctx, resourceSlug, id)
+
 	}
 
-	// 获取记录
-	result, err := s.resourceRepository.FindByID(ctx, resourceSlug, id)
 	if err != nil {
+
 		return nil, err
+
 	}
 
-	// 缓存结果
 	s.cacheManager.Set(ctx, cacheKey, result, cache.DefaultExpiration)
 
-	return result, nil
+	return s.filterReadableRecord(ctx, resource, result), nil
+
 }
 
 // List 获取资源记录列表
@@ -234,24 +254,29 @@ func (s *ResourceService) List(
 	// 排序字段白名单与默认排序
 	orderBy, orderDirection = s.sanitizeOrder(resource, orderBy, orderDirection)
 
+	var relationships map[string]string
+	if resource != nil {
+		relationships = s.getRelationships(resource)
+	}
+
 	cacheKey := s.getListCacheKey(resourceSlug, page, pageSize, filters, search, orderBy, orderDirection)
 	if cached, err := s.cacheManager.Get(ctx, cacheKey); err == nil && cached != nil {
 		if result, ok := cached.(map[string]interface{}); ok {
 			if items, ok := result["items"].([]map[string]interface{}); ok {
 				if total, ok := result["total"].(int64); ok {
-					return items, total, nil
+					return s.filterReadableList(ctx, resource, items), total, nil
 				}
 			}
 		}
 	}
 	results, total, err := s.resourceRepository.ListWithRelationshipsAndFilters(
-		ctx, resourceSlug, page, pageSize, s.getRelationships(s.resourceManager.GetResourceBySlug(resourceSlug)), filters, search, orderBy, orderDirection)
+		ctx, resourceSlug, page, pageSize, relationships, filters, search, orderBy, orderDirection)
 	if err != nil {
 		return nil, 0, err
 	}
 	cacheData := map[string]interface{}{"items": results, "total": total}
 	s.cacheManager.Set(ctx, cacheKey, cacheData, cache.DefaultExpiration)
-	return results, total, nil
+	return s.filterReadableList(ctx, resource, results), total, nil
 }
 
 // Export 导出资源数据
@@ -360,6 +385,55 @@ func (s *ResourceService) ForceDelete(ctx context.Context, resourceSlug string, 
 	return nil
 }
 
+// RunAction 执行资源动作（供 Frontend 调用）
+func (s *ResourceService) RunAction(
+	ctx context.Context,
+	resourceSlug string,
+	actionName string,
+	ids []interface{},
+	params map[string]interface{},
+) (interface{}, error) {
+	resource := s.resourceManager.GetResourceBySlug(resourceSlug)
+	if resource == nil {
+		return nil, &ResourceNotFoundError{ResourceSlug: resourceSlug}
+	}
+	executor, ok := resource.(admin.ActionExecutor)
+	if !ok {
+		return s.handleBuiltInAction(ctx, resourceSlug, actionName, ids, params)
+	}
+	return executor.RunAction(ctx, actionName, ids, params)
+}
+
+func (s *ResourceService) handleBuiltInAction(
+	ctx context.Context,
+	resourceSlug string,
+	actionName string,
+	ids []interface{},
+	params map[string]interface{},
+) (interface{}, error) {
+	if resourceSlug != "crud_items" {
+		return nil, ErrActionNotSupported
+	}
+	switch actionName {
+	case "reset_values":
+		updated := 0
+		for _, id := range ids {
+			if err := s.resourceRepository.Update(ctx, resourceSlug, id, map[string]interface{}{"value": "", "remark": ""}); err == nil {
+				updated++
+			}
+		}
+		return map[string]interface{}{"updated": updated}, nil
+	case "bulk_delete":
+		count, err := s.resourceRepository.DeleteBatch(ctx, resourceSlug, ids)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"deleted": count}, nil
+	default:
+		return nil, ErrActionNotSupported
+	}
+}
+
 // getRelationships 获取资源的关联字段信息
 func (s *ResourceService) getRelationships(resource admin.Resource) map[string]string {
 	relationships := make(map[string]string)
@@ -462,8 +536,128 @@ func toSet(list []string) map[string]struct{} {
 	return s
 }
 
+func (s *ResourceService) getReadableFieldSet(ctx context.Context, resource admin.Resource) map[string]struct{} {
+	if resource == nil {
+		return nil
+	}
+	var fields []string
+	if provider, ok := any(resource).(admin.FieldPermissionProvider); ok {
+		perms := provider.GetFieldPermissions(ctx)
+		if len(perms.Readable) > 0 {
+			fields = append(fields, perms.Readable...)
+		}
+	}
+	if len(fields) == 0 {
+		fields = append(fields, s.getFieldNames(resource)...)
+	}
+	defaults := []string{"id", "created_at", "updated_at"}
+	fields = append(fields, defaults...)
+	return toSet(fields)
+}
+
+func (s *ResourceService) getWritableFieldSet(ctx context.Context, resource admin.Resource) map[string]struct{} {
+	if resource == nil {
+		return nil
+	}
+	var fields []string
+	if provider, ok := any(resource).(admin.FieldPermissionProvider); ok {
+		perms := provider.GetFieldPermissions(ctx)
+		if len(perms.Writable) > 0 {
+			fields = append(fields, perms.Writable...)
+		}
+	}
+	if len(fields) == 0 {
+		for _, field := range resource.GetFields() {
+			fields = append(fields, field.GetName())
+		}
+	}
+	return toSet(fields)
+}
+
+func (s *ResourceService) getReadOnlyFieldSet(resource admin.Resource) map[string]struct{} {
+	if resource == nil {
+		return nil
+	}
+	return toSet(resource.GetReadOnlyFields())
+}
+
+func (s *ResourceService) filterReadableRecord(ctx context.Context, resource admin.Resource, record map[string]interface{}) map[string]interface{} {
+	if record == nil {
+		return nil
+	}
+	readable := s.getReadableFieldSet(ctx, resource)
+	return s.keepFields(record, readable)
+}
+
+func (s *ResourceService) filterReadableList(ctx context.Context, resource admin.Resource, list []map[string]interface{}) []map[string]interface{} {
+	if len(list) == 0 {
+		return list
+	}
+	readable := s.getReadableFieldSet(ctx, resource)
+	filtered := make([]map[string]interface{}, 0, len(list))
+	for _, item := range list {
+		filtered = append(filtered, s.keepFields(item, readable))
+	}
+	return filtered
+}
+
+func (s *ResourceService) keepFields(record map[string]interface{}, readable map[string]struct{}) map[string]interface{} {
+	if record == nil {
+		return nil
+	}
+	if len(readable) == 0 {
+		clone := make(map[string]interface{}, len(record))
+		for k, v := range record {
+			clone[k] = v
+		}
+		return clone
+	}
+	clone := make(map[string]interface{}, len(readable))
+	for k, v := range record {
+		if _, ok := readable[k]; ok || strings.HasSuffix(k, "_data") {
+			clone[k] = v
+		}
+	}
+	return clone
+}
+
+func (s *ResourceService) enforceWritableFields(ctx context.Context, resource admin.Resource, data map[string]interface{}) (map[string]interface{}, error) {
+	if data == nil {
+		return map[string]interface{}{}, nil
+	}
+	allowed := s.getWritableFieldSet(ctx, resource)
+	readOnly := s.getReadOnlyFieldSet(resource)
+	clean := make(map[string]interface{}, len(data))
+	errs := make(map[string][]string)
+
+	for field, value := range data {
+		if readOnly != nil {
+			if _, ok := readOnly[field]; ok {
+				errs[field] = append(errs[field], "字段只读，禁止写入")
+				continue
+			}
+		}
+		if allowed != nil {
+			if _, ok := allowed[field]; !ok {
+				errs[field] = append(errs[field], "没有写入该字段的权限")
+				continue
+			}
+		}
+		clean[field] = value
+	}
+
+	if len(errs) > 0 {
+		return nil, &ValidationError{Errors: errs}
+	}
+
+	return clean, nil
+}
+
 // getFieldNames 提取资源字段名集合
 func (s *ResourceService) getFieldNames(resource admin.Resource) []string {
+	if resource == nil {
+		return nil
+	}
 	fields := resource.GetFields()
 	names := make([]string, 0, len(fields))
 	for _, f := range fields {
@@ -472,12 +666,12 @@ func (s *ResourceService) getFieldNames(resource admin.Resource) []string {
 	return names
 }
 
-// clearResourceCache 清除资源相关缓存
+// clearResourceCache 资源相关缓存
 func (s *ResourceService) clearResourceCache(ctx context.Context, resourceSlug string) {
-	// 这里可以实现更复杂的缓存清除逻辑
-	// 例如：清除所有与该资源相关的列表缓存
-	// 简化处理：清除所有缓存
-	s.cacheManager.Flush(ctx)
+	prefix := "resource:" + resourceSlug + ":"
+	if err := s.cacheManager.DeleteByPrefix(ctx, prefix); err != nil {
+		_ = s.cacheManager.Flush(ctx)
+	}
 }
 
 // getRecordCacheKey 生成记录缓存键
@@ -556,3 +750,6 @@ type ValidationError struct {
 func (e *ValidationError) Error() string {
 	return "validation failed"
 }
+
+// ErrActionNotSupported 表示资源未实现动作
+var ErrActionNotSupported = errors.New("action not supported")

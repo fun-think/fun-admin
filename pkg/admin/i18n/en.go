@@ -20,7 +20,7 @@ var EnglishResources = map[string]string{
 	"yes":            "Yes",
 	"no":             "No",
 	"select_all":     "Select All",
-	" deselect_all":  "Deselect All",
+	"deselect_all":   "Deselect All",
 	"selected_items": "%d items selected",
 
 	// 字段类型
@@ -79,16 +79,35 @@ var EnglishResources = map[string]string{
 	"archived":  "Archived",
 
 	// 错误消息
-	"error.create_failed":     "Create failed",
-	"error.update_failed":     "Update failed",
-	"error.delete_failed":     "Delete failed",
-	"error.load_failed":       "Load failed",
-	"error.validation_failed": "Validation failed",
+	"error.create_failed":               "Create failed",
+	"error.update_failed":               "Update failed",
+	"error.delete_failed":               "Delete failed",
+	"error.load_failed":                 "Load failed",
+	"error.validation_failed":           "Validation failed",
+	"error.keyword_required":            "Keyword is required",
+	"error.resource_not_found":          "Resource not found",
+	"error.record_not_found":            "Record not found",
+	"error.invalid_id":                  "Invalid ID",
+	"error.log_not_found":               "Log not found",
+	"error.invalid_request_data":        "Invalid request data",
+	"error.missing_id_parameter":        "Missing ID parameter",
+	"error.failed_to_get_data":          "Failed to get data",
+	"error.failed_to_create_record":     "Failed to create record",
+	"error.failed_to_update_record":     "Failed to update record",
+	"error.failed_to_delete_record":     "Failed to delete record",
+	"error.failed_to_delete_log":        "Failed to delete log",
+	"error.failed_to_batch_delete_logs": "Failed to batch delete logs",
+	"error.failed_to_perform_action":    "Failed to perform action",
+	"error.action_not_supported":        "Action not supported",
 
 	// 成功消息
-	"success.create": "Created successfully",
-	"success.update": "Updated successfully",
-	"success.delete": "Deleted successfully",
+	"success.create":                     "Created successfully",
+	"success.update":                     "Updated successfully",
+	"success.delete":                     "Deleted successfully",
+	"message.created_successfully":       "Created successfully",
+	"message.updated_successfully":       "Updated successfully",
+	"message.deleted_successfully":       "Deleted successfully",
+	"message.batch_deleted_successfully": "Batch deleted successfully",
 
 	// 验证消息
 	"validation.required":   "%s is required",

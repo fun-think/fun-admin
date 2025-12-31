@@ -5,7 +5,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons-vue'
 import { listenerRouteChange, removeRouteListener } from '~@/utils/route-listener'
-import { useLayoutState } from '~/layouts/basic-layout/context'
+import { useLayoutState } from '@/layouts/basic-layout/context'
 
 const multiTabStore = useMultiTab()
 const { list, activeKey } = storeToRefs(multiTabStore)

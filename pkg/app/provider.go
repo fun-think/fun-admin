@@ -21,6 +21,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -74,7 +75,13 @@ func (p *CoreServiceProvider) Register(c *container.Container) {
 
 	// 注册 SID
 	c.Singleton("sid", func(c *container.Container) *sid.Sid {
-		return sid.NewSid()
+		sidInstance, err := sid.NewSid()
+		if err != nil {
+			log := c.MustGet("logger").(*logger.Logger)
+			log.Fatal("failed to create sid instance", zap.Error(err))
+			return nil
+		}
+		return sidInstance
 	})
 }
 
@@ -172,6 +179,13 @@ func (p *RepositoryServiceProvider) Register(c *container.Container) {
 		return repository.NewPermissionRepository(log, db, enforcer)
 	})
 
+	// 注册登录仓储
+	c.Singleton("login_repository", func(c *container.Container) repository.LoginRepository {
+		log := c.MustGet("logger").(*logger.Logger)
+		db := c.MustGet("database").(*gorm.DB)
+		return repository.NewLoginRepository(log, db)
+	})
+
 }
 
 func (p *RepositoryServiceProvider) Boot(c *container.Container) error {
@@ -195,7 +209,8 @@ func (p *ServiceServiceProvider) Register(c *container.Container) {
 	c.Singleton("login_service", func(c *container.Container) service.LoginService {
 		baseService := c.MustGet("base_service").(*service.Service)
 		userRepo := c.MustGet("user_repository").(repository.UserRepository)
-		return service.NewLoginService(baseService, userRepo)
+		loginRepo := c.MustGet("login_repository").(repository.LoginRepository)
+		return service.NewLoginService(baseService, userRepo, loginRepo)
 	})
 
 	// 注册用户服务
@@ -249,7 +264,8 @@ func (p *ServiceServiceProvider) Register(c *container.Container) {
 	// 注册文件服务
 	c.Singleton("file_service", func(c *container.Container) *service.FileService {
 		log := c.MustGet("logger").(*logger.Logger)
-		return service.NewFileService(log)
+		conf := c.MustGet("config").(*viper.Viper)
+		return service.NewFileService(log, conf)
 	})
 
 	// 注册导入服务
@@ -371,13 +387,15 @@ func (p *HandlerServiceProvider) Register(c *container.Container) {
 	// 注册文件处理器
 	c.Singleton("file_handler", func(c *container.Container) *handler.FileHandler {
 		log := c.MustGet("logger").(*logger.Logger)
-		return handler.NewFileHandler(log)
+		fileService := c.MustGet("file_service").(*service.FileService)
+		return handler.NewFileHandler(log, fileService)
 	})
 
 	// 注册导入处理器
 	c.Singleton("import_handler", func(c *container.Container) *handler.ImportHandler {
 		importService := c.MustGet("import_service").(*service.ImportService)
-		return handler.NewImportHandler(importService)
+		resourceService := c.MustGet("resource_service").(*service.ResourceService)
+		return handler.NewImportHandler(importService, resourceService)
 	})
 
 	// 注册权限处理器
@@ -449,6 +467,11 @@ func (ca *cacheAdapter) Delete(ctx context.Context, key string) error {
 // 实现 Exists 方法
 func (ca *cacheAdapter) Exists(ctx context.Context, key string) (bool, error) {
 	return ca.cm.Exists(ctx, key)
+}
+
+// 实现 DeleteByPrefix 方法
+func (ca *cacheAdapter) DeleteByPrefix(ctx context.Context, prefix string) error {
+	return ca.cm.DeleteByPrefix(ctx, prefix)
 }
 
 // 实现 Flush 方法

@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"context"
 	"fun-admin/internal/model"
 	"fun-admin/pkg/admin"
 )
@@ -99,4 +100,12 @@ func (r *UserResource) GetFilterableFields() []string {
 // GetReadOnlyFields 返回只读字段
 func (r *UserResource) GetReadOnlyFields() []string {
 	return []string{"id", "created_at", "updated_at"}
+}
+
+// GetFieldPermissions 返回字段级权限配置
+func (r *UserResource) GetFieldPermissions(ctx context.Context) admin.FieldPermissions {
+	return admin.FieldPermissions{
+		Readable: []string{"id", "username", "nickname", "email", "phone", "status", "created_at", "updated_at"},
+		Writable: []string{"username", "nickname", "email", "phone", "status"},
+	}
 }

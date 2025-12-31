@@ -1,0 +1,31 @@
+env: test
+http:
+  host: 127.0.0.1
+  port: 8001
+security:
+  api_sign:
+    app_key: test_api_key_change_in_production
+    app_security: test_api_secret_change_in_production
+  jwt:
+    key: test_jwt_secret_key_here_at_least_32_characters_long
+    expire_hours: 2160 # 90 days
+data:
+  db:
+    user:
+      driver: sqlite
+      dsn: storage/test.db?_busy_timeout=5000
+  redis:
+    addr: 127.0.0.1:6379
+    password: ""
+    db: 0
+    read_timeout: 0.2s
+    write_timeout: 0.2s
+
+log:
+  log_level: debug
+  encoding: console
+  log_file_name: "./storage/logs/server.logger"
+  max_backups: 30
+  max_age: 7
+  max_size: 1024
+  compress: true

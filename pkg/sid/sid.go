@@ -1,6 +1,8 @@
 package sid
 
 import (
+	"fmt"
+
 	"github.com/sony/sonyflake"
 )
 
@@ -8,12 +10,12 @@ type Sid struct {
 	sf *sonyflake.Sonyflake
 }
 
-func NewSid() *Sid {
+func NewSid() (*Sid, error) {
 	sf := sonyflake.NewSonyflake(sonyflake.Settings{})
 	if sf == nil {
-		panic("sonyflake not created")
+		return nil, fmt.Errorf("failed to create sonyflake instance")
 	}
-	return &Sid{sf}
+	return &Sid{sf}, nil
 }
 func (s Sid) GenString() (string, error) {
 	id, err := s.sf.NextID()

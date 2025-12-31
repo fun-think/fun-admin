@@ -3,11 +3,6 @@ import router from '~@/router'
 import { deepFind } from '~@/utils/tree'
 
 function toMapMenuData(menuData, menuDataMap, matched = []) {
-  // 添加检查确保menuData存在且为数组
-  if (!menuData || !Array.isArray(menuData)) {
-    return
-  }
-  
   menuData.forEach((v) => {
     menuDataMap.set(v.path, { ...v, matched })
     if (v.children && v.children.length)

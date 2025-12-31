@@ -11,6 +11,7 @@ import (
 
 type ApiRepository interface {
 	GetApis(ctx context.Context, req *v1.GetApisRequest) ([]*model.Api, int64, error)
+	GetApi(ctx context.Context, id uint) (*model.Api, error)
 	GetApiGroups(ctx context.Context) ([]string, error)
 	ApiUpdate(ctx context.Context, api *model.Api) error
 	ApiCreate(ctx context.Context, api *model.Api) error
@@ -62,6 +63,12 @@ func (r *apiRepository) GetApiGroups(ctx context.Context) ([]string, error) {
 	var groups []string
 	err := r.db.Model(&model.Api{}).Distinct().Pluck("group", &groups).Error
 	return groups, err
+}
+
+func (r *apiRepository) GetApi(ctx context.Context, id uint) (*model.Api, error) {
+	var api model.Api
+	err := r.db.Where("id = ?", id).First(&api).Error
+	return &api, err
 }
 
 func (r *apiRepository) ApiUpdate(ctx context.Context, api *model.Api) error {

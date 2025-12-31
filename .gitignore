@@ -1,9 +1,13 @@
 storage/logs
+storage/uploads
+storage/local.db
 .idea
 .vscode
+.env
 *.log
 web/dist
 web/node_modules
 deploy/docker-compose/conf
 deploy/docker-compose/data
-/admin
+tmp
+bin

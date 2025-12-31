@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,11 @@ func (m *Manager) initDefaults() {
 	m.v.SetDefault("http.read_timeout", "30s")
 	m.v.SetDefault("http.write_timeout", "30s")
 	m.v.SetDefault("http.idle_timeout", "120s")
+	m.v.SetDefault("http.cors.allowed_origins", []string{})
+	m.v.SetDefault("http.cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
+	m.v.SetDefault("http.cors.allowed_headers", []string{"Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"})
+	m.v.SetDefault("http.cors.allow_credentials", false)
+	m.v.SetDefault("http.cors.max_age", "2h")
 
 	// 数据库配置
 	m.v.SetDefault("data.db.user.driver", "sqlite")
@@ -55,14 +61,14 @@ func (m *Manager) initDefaults() {
 	m.v.SetDefault("data.db.max_idle_time", "30m")
 
 	// Redis配置
-	m.v.SetDefault("redis.addr", "")
-	m.v.SetDefault("redis.password", "")
-	m.v.SetDefault("redis.db", 0)
+	m.v.SetDefault("data.redis.addr", "")
+	m.v.SetDefault("data.redis.password", "")
+	m.v.SetDefault("data.redis.db", 0)
 	m.v.SetDefault("redis.pool_size", 10)
 	m.v.SetDefault("redis.min_idle_conns", 5)
 
 	// JWT配置
-	m.v.SetDefault("jwt.secret", "your-secret-key")
+	m.v.SetDefault("security.jwt.key", "your-secret-key")
 	m.v.SetDefault("jwt.expires", "24h")
 	m.v.SetDefault("jwt.refresh_expires", "168h")
 
@@ -113,17 +119,17 @@ func (m *Manager) loadConfig(configPath string) {
 
 	// 创建配置文件目录
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
-		fmt.Printf("Failed to create config directory: %v\n", err)
+		log.Printf("Failed to create config directory: %v", err)
 	}
 
 	// 读取配置文件
 	if err := m.v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// 配置文件不存在，使用默认配置并创建配置文件
-			fmt.Printf("Config file not found, creating default config at: %s\n", configPath)
+			log.Printf("Config file not found, creating default config at: %s", configPath)
 			m.createDefaultConfigFile(configPath)
 		} else {
-			fmt.Printf("Error reading config file: %v\n", err)
+			log.Printf("Error reading config file: %v", err)
 		}
 	}
 }
@@ -131,7 +137,7 @@ func (m *Manager) loadConfig(configPath string) {
 // createDefaultConfigFile 创建默认配置文件
 func (m *Manager) createDefaultConfigFile(configPath string) {
 	if err := m.v.WriteConfigAs(configPath); err != nil {
-		fmt.Printf("Failed to create default config file: %v\n", err)
+		log.Printf("Failed to create default config file: %v", err)
 	}
 }
 
@@ -266,7 +272,7 @@ func (m *Manager) Validate() error {
 	requiredKeys := []string{
 		"app.name",
 		"http.port",
-		"jwt.secret",
+		"security.jwt.key",
 	}
 
 	for _, key := range requiredKeys {
@@ -276,8 +282,8 @@ func (m *Manager) Validate() error {
 	}
 
 	// 验证JWT secret长度
-	if len(m.GetString("jwt.secret")) < 32 {
-		return fmt.Errorf("jwt.secret must be at least 32 characters long")
+	if len(m.GetString("security.jwt.key")) < 32 {
+		return fmt.Errorf("security.jwt.key must be at least 32 characters long")
 	}
 
 	// 验证端口范围
@@ -340,7 +346,7 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Secret         string        `mapstructure:"secret"`
+	Secret         string        `mapstructure:"key"`
 	Expires        time.Duration `mapstructure:"expires"`
 	RefreshExpires time.Duration `mapstructure:"refresh_expires"`
 }

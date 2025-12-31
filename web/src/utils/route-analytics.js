@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue'
+import { reactive } from 'vue'
 
 /**
  * 路由分析状态
@@ -6,27 +6,27 @@ import { ref, reactive } from 'vue'
 const analyticsState = reactive({
   // 页面访问统计
   pageViews: new Map(),
-  
+
   // 路由切换记录
   routeHistory: [],
-  
+
   // 性能数据
   performance: {
     loadTimes: new Map(),
     renderTimes: new Map(),
-    errorRates: new Map()
+    errorRates: new Map(),
   },
-  
+
   // 用户行为
   userBehavior: {
     bounceRate: 0,
     avgSessionTime: 0,
-    pageDepth: new Map()
+    pageDepth: new Map(),
   },
-  
+
   // 错误统计
   errors: [],
-  
+
   // 配置
   config: {
     enabled: true,
@@ -35,8 +35,8 @@ const analyticsState = reactive({
     reportInterval: 30000, // 30秒上报一次
     enablePerformanceTracking: true,
     enableErrorTracking: true,
-    enableUserBehaviorTracking: true
-  }
+    enableUserBehaviorTracking: true,
+  },
 })
 
 /**
@@ -49,14 +49,14 @@ export class RouteAnalytics {
     this.startTime = Date.now()
     this.currentRoute = null
     this.routeStartTime = null
-    
+
     // 定期上报数据
     if (this.config.reportInterval > 0) {
       this.reportTimer = setInterval(() => {
         this.reportAnalytics()
       }, this.config.reportInterval)
     }
-    
+
     // 页面卸载时上报
     window.addEventListener('beforeunload', () => {
       this.reportAnalytics(true)
@@ -72,37 +72,40 @@ export class RouteAnalytics {
 
   /**
    * 记录路由进入
-   * @param {Object} to - 目标路由
-   * @param {Object} from - 来源路由
+   * @param {object} to - 目标路由
+   * @param {object} from - 来源路由
    */
   recordRouteEnter(to, from) {
-    if (!this.config.enabled) return
+    if (!this.config.enabled)
+      return
 
     const now = Date.now()
     const routeKey = `${to.name || 'unknown'}:${to.path}`
-    
+
     // 记录路由切换
     const routeChange = {
       sessionId: this.sessionId,
       timestamp: now,
-      from: from ? {
-        name: from.name,
-        path: from.path,
-        fullPath: from.fullPath
-      } : null,
+      from: from
+        ? {
+            name: from.name,
+            path: from.path,
+            fullPath: from.fullPath,
+          }
+        : null,
       to: {
         name: to.name,
         path: to.path,
         fullPath: to.fullPath,
-        meta: to.meta
+        meta: to.meta,
       },
       referrer: document.referrer,
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
     }
 
     // 添加到历史记录
     analyticsState.routeHistory.push(routeChange)
-    
+
     // 限制历史记录大小
     if (analyticsState.routeHistory.length > this.config.maxHistorySize) {
       analyticsState.routeHistory.shift()
@@ -114,9 +117,9 @@ export class RouteAnalytics {
       firstVisit: now,
       lastVisit: now,
       totalTime: 0,
-      bounces: 0
+      bounces: 0,
     }
-    
+
     current.count++
     current.lastVisit = now
     analyticsState.pageViews.set(routeKey, current)
@@ -133,11 +136,12 @@ export class RouteAnalytics {
 
   /**
    * 记录路由离开
-   * @param {Object} from - 离开的路由
-   * @param {Object} to - 目标路由
+   * @param {object} from - 离开的路由
+   * @param {object} to - 目标路由
    */
   recordRouteLeave(from, to) {
-    if (!this.config.enabled || !this.routeStartTime) return
+    if (!this.config.enabled || !this.routeStartTime)
+      return
 
     const now = Date.now()
     const routeKey = `${from.name || 'unknown'}:${from.path}`
@@ -147,12 +151,12 @@ export class RouteAnalytics {
     const pageData = analyticsState.pageViews.get(routeKey)
     if (pageData) {
       pageData.totalTime += stayTime
-      
+
       // 判断是否为跳出（停留时间少于30秒且没有进一步操作）
       if (stayTime < 30000 && this.isPageBounce(from)) {
         pageData.bounces++
       }
-      
+
       analyticsState.pageViews.set(routeKey, pageData)
     }
 
@@ -162,11 +166,12 @@ export class RouteAnalytics {
 
   /**
    * 记录路由错误
-   * @param {Object} error - 错误信息
-   * @param {Object} route - 相关路由
+   * @param {object} error - 错误信息
+   * @param {object} route - 相关路由
    */
   recordRouteError(error, route) {
-    if (!this.config.enabled || !this.config.enableErrorTracking) return
+    if (!this.config.enabled || !this.config.enableErrorTracking)
+      return
 
     const errorRecord = {
       sessionId: this.sessionId,
@@ -174,19 +179,21 @@ export class RouteAnalytics {
       error: {
         message: error.message,
         stack: error.stack,
-        name: error.name
+        name: error.name,
       },
-      route: route ? {
-        name: route.name,
-        path: route.path,
-        fullPath: route.fullPath
-      } : null,
+      route: route
+        ? {
+            name: route.name,
+            path: route.path,
+            fullPath: route.fullPath,
+          }
+        : null,
       userAgent: navigator.userAgent,
-      url: window.location.href
+      url: window.location.href,
     }
 
     analyticsState.errors.push(errorRecord)
-    
+
     // 限制错误记录大小
     if (analyticsState.errors.length > this.config.maxErrorSize) {
       analyticsState.errors.shift()
@@ -201,20 +208,21 @@ export class RouteAnalytics {
 
   /**
    * 性能追踪
-   * @param {Object} route - 路由对象
+   * @param {object} route - 路由对象
    */
   trackPerformance(route) {
     const routeKey = `${route.name}:${route.path}`
-    
+
     // 记录加载开始时间
     const loadStartTime = Date.now()
-    
+
     // 监听页面加载完成
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         this.recordLoadTime(routeKey, Date.now() - loadStartTime)
       })
-    } else {
+    }
+    else {
       // 页面已加载，记录渲染时间
       this.$nextTick(() => {
         this.recordRenderTime(routeKey, Date.now() - loadStartTime)
@@ -235,8 +243,8 @@ export class RouteAnalytics {
 
   /**
    * 记录加载时间
-   * @param {String} routeKey - 路由键
-   * @param {Number} loadTime - 加载时间
+   * @param {string} routeKey - 路由键
+   * @param {number} loadTime - 加载时间
    */
   recordLoadTime(routeKey, loadTime) {
     const times = analyticsState.performance.loadTimes.get(routeKey) || []
@@ -246,8 +254,8 @@ export class RouteAnalytics {
 
   /**
    * 记录渲染时间
-   * @param {String} routeKey - 路由键
-   * @param {Number} renderTime - 渲染时间
+   * @param {string} routeKey - 路由键
+   * @param {number} renderTime - 渲染时间
    */
   recordRenderTime(routeKey, renderTime) {
     const times = analyticsState.performance.renderTimes.get(routeKey) || []
@@ -257,8 +265,8 @@ export class RouteAnalytics {
 
   /**
    * 记录详细性能数据
-   * @param {String} routeKey - 路由键
-   * @param {Object} entry - 性能条目
+   * @param {string} routeKey - 路由键
+   * @param {object} entry - 性能条目
    */
   recordDetailedPerformance(routeKey, entry) {
     const performanceData = {
@@ -268,7 +276,7 @@ export class RouteAnalytics {
       ttfb: entry.responseStart - entry.requestStart,
       download: entry.responseEnd - entry.responseStart,
       dom: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart,
-      load: entry.loadEventEnd - entry.loadEventStart
+      load: entry.loadEventEnd - entry.loadEventStart,
     }
 
     // 存储详细性能数据
@@ -279,7 +287,7 @@ export class RouteAnalytics {
 
   /**
    * 判断是否为页面跳出
-   * @param {Object} route - 路由对象
+   * @param {object} route - 路由对象
    */
   isPageBounce(route) {
     // 简单的跳出判断：用户没有进行任何交互就离开
@@ -289,21 +297,21 @@ export class RouteAnalytics {
 
   /**
    * 更新页面深度
-   * @param {Object} route - 路由对象
-   * @param {Number} stayTime - 停留时间
+   * @param {object} route - 路由对象
+   * @param {number} stayTime - 停留时间
    */
   updatePageDepth(route, stayTime) {
     const routeKey = `${route.name}:${route.path}`
     const current = analyticsState.userBehavior.pageDepth.get(routeKey) || {
       totalViews: 0,
       totalTime: 0,
-      avgTime: 0
+      avgTime: 0,
     }
-    
+
     current.totalViews++
     current.totalTime += stayTime
     current.avgTime = current.totalTime / current.totalViews
-    
+
     analyticsState.userBehavior.pageDepth.set(routeKey, current)
   }
 
@@ -318,7 +326,7 @@ export class RouteAnalytics {
       performance: this.getPerformanceReport(),
       userBehavior: this.getUserBehaviorReport(),
       errors: this.getErrorsReport(),
-      routeHistory: analyticsState.routeHistory.slice(-50) // 最近50条记录
+      routeHistory: analyticsState.routeHistory.slice(-50), // 最近50条记录
     }
   }
 
@@ -332,7 +340,7 @@ export class RouteAnalytics {
         route: routeKey,
         ...data,
         avgStayTime: data.totalTime / data.count,
-        bounceRate: data.bounces / data.count
+        bounceRate: data.bounces / data.count,
       })
     })
     return report.sort((a, b) => b.count - a.count)
@@ -345,7 +353,7 @@ export class RouteAnalytics {
     const report = {
       loadTimes: {},
       renderTimes: {},
-      errorRates: {}
+      errorRates: {},
     }
 
     // 加载时间统计
@@ -387,10 +395,10 @@ export class RouteAnalytics {
   getUserBehaviorReport() {
     const totalPageViews = Array.from(analyticsState.pageViews.values())
       .reduce((sum, data) => sum + data.count, 0)
-    
+
     const totalBounces = Array.from(analyticsState.pageViews.values())
       .reduce((sum, data) => sum + data.bounces, 0)
-    
+
     const totalTime = Array.from(analyticsState.pageViews.values())
       .reduce((sum, data) => sum + data.totalTime, 0)
 
@@ -399,7 +407,7 @@ export class RouteAnalytics {
       avgSessionTime: totalTime / totalPageViews,
       totalPageViews,
       uniqueRoutes: analyticsState.pageViews.size,
-      pageDepth: Object.fromEntries(analyticsState.userBehavior.pageDepth)
+      pageDepth: Object.fromEntries(analyticsState.userBehavior.pageDepth),
     }
   }
 
@@ -410,7 +418,7 @@ export class RouteAnalytics {
     const errorsByRoute = {}
     const errorsByType = {}
 
-    analyticsState.errors.forEach(error => {
+    analyticsState.errors.forEach((error) => {
       const routeKey = error.route ? `${error.route.name}:${error.route.path}` : 'unknown'
       const errorType = error.error.name || 'Unknown'
 
@@ -422,19 +430,20 @@ export class RouteAnalytics {
       total: analyticsState.errors.length,
       errorsByRoute,
       errorsByType,
-      recentErrors: analyticsState.errors.slice(-10) // 最近10个错误
+      recentErrors: analyticsState.errors.slice(-10), // 最近10个错误
     }
   }
 
   /**
    * 上报分析数据
-   * @param {Boolean} immediate - 是否立即上报
+   * @param {boolean} immediate - 是否立即上报
    */
   async reportAnalytics(immediate = false) {
-    if (!this.config.enabled) return
+    if (!this.config.enabled)
+      return
 
     const report = this.getAnalyticsReport()
-    
+
     try {
       // 发送到服务器
       if (this.config.reportEndpoint) {
@@ -442,9 +451,9 @@ export class RouteAnalytics {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           },
-          body: JSON.stringify(report)
+          body: JSON.stringify(report),
         })
       }
 
@@ -454,8 +463,8 @@ export class RouteAnalytics {
       }
 
       console.log('Analytics reported successfully:', report)
-      
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Failed to report analytics:', error)
     }
   }
@@ -486,7 +495,7 @@ export function useRouteAnalytics(options = {}) {
   return {
     // 状态
     state: analyticsState,
-    
+
     // 方法
     recordRouteEnter: (to, from) => analytics.recordRouteEnter(to, from),
     recordRouteLeave: (from, to) => analytics.recordRouteLeave(from, to),
@@ -494,9 +503,9 @@ export function useRouteAnalytics(options = {}) {
     getReport: () => analytics.getAnalyticsReport(),
     reportAnalytics: () => analytics.reportAnalytics(),
     cleanup: () => analytics.cleanup(),
-    
+
     // 实例
-    analytics
+    analytics,
   }
 }
 
@@ -505,7 +514,7 @@ let globalAnalytics = null
 
 /**
  * 创建全局路由分析器
- * @param {Object} options - 配置选项
+ * @param {object} options - 配置选项
  */
 export function createRouteAnalytics(options = {}) {
   globalAnalytics = new RouteAnalytics(options)

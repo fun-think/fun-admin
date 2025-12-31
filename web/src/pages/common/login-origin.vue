@@ -1,9 +1,9 @@
 <script setup>
 import { AlipayCircleFilled, LockOutlined, MobileOutlined, TaobaoCircleFilled, UserOutlined, WeiboCircleFilled } from '@ant-design/icons-vue'
 import { AxiosError } from 'axios'
-import GlobalLayoutFooter from '~/layouts/components/global-footer/index.vue'
-import { loginApi } from '~/api/common/login'
-import { getQueryParam } from '~/utils/tools'
+import GlobalLayoutFooter from '@/layouts/components/global-footer/index.vue'
+import { login } from '@/api/login'
+import { getQueryParam } from '@/utils/tools'
 
 const message = useMessage()
 const notification = useNotification()
@@ -68,7 +68,7 @@ async function submit() {
         type: 'mobile',
       }
     }
-    const { data } = await loginApi(params)
+    const { data } = await login(params)
     token.value = data?.token
     notification.success({
       message: '登录成功',

@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"fun-admin/internal/service"
-	"fun-admin/pkg/admin/i18n"
 	"net/http"
 	"strconv"
+
+	"fun-admin/internal/service"
+	"fun-admin/pkg/admin/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +16,7 @@ type OperationLogHandler struct {
 	operationLogService service.OperationLogServiceInterface
 }
 
-// NewOperationLogHandler 创建操作日志处理器
+// NewOperationLogHandler 创建处理器
 func NewOperationLogHandler(
 	handler *Handler,
 	operationLogService service.OperationLogServiceInterface,
@@ -26,67 +27,50 @@ func NewOperationLogHandler(
 	}
 }
 
-// GetOperationLogs 获取操作日志列表
+// GetOperationLogs 操作日志列表
 func (h *OperationLogHandler) GetOperationLogs(c *gin.Context) {
-	// 获取分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
-	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
-	// 构建过滤条件
 	filters := make(map[string]interface{})
-
-	// 添加搜索条件
 	if keyword := c.Query("search_keyword"); keyword != "" {
 		filters["keyword"] = keyword
 	}
-
-	// 添加用户筛选
 	if userID := c.Query("user_id"); userID != "" {
 		filters["user_id"] = userID
 	}
-
-	// 添加资源筛选
 	if resource := c.Query("resource"); resource != "" {
 		filters["resource"] = resource
 	}
-
-	// 添加操作类型筛选
 	if action := c.Query("action"); action != "" {
 		filters["action"] = action
 	}
-
-	// 添加方法筛选
 	if method := c.Query("method"); method != "" {
 		filters["method"] = method
 	}
-
-	// 添加路径筛选
 	if path := c.Query("path"); path != "" {
 		filters["path"] = path
 	}
-
-	// 添加IP筛选
 	if ip := c.Query("ip"); ip != "" {
 		filters["ip"] = ip
 	}
-
-	// 添加状态码筛选
 	if statusCode := c.Query("status_code"); statusCode != "" {
 		filters["status_code"] = statusCode
 	}
+	if startTime := c.Query("start_time"); startTime != "" {
+		filters["created_at_from"] = startTime
+	}
+	if endTime := c.Query("end_time"); endTime != "" {
+		filters["created_at_to"] = endTime
+	}
 
-	// 获取操作日志列表
 	logs, total, err := h.operationLogService.GetOperationLogs(c, page, pageSize, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_get_data") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_get_data"), err),
 		})
 		return
 	}
@@ -103,13 +87,9 @@ func (h *OperationLogHandler) GetOperationLogs(c *gin.Context) {
 	})
 }
 
-// GetOperationLog 获取单个操作日志详情
+// GetOperationLog 获取详情
 func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
-	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -136,13 +116,9 @@ func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 	})
 }
 
-// DeleteOperationLog 删除操作日志
+// DeleteOperationLog 删除日志
 func (h *OperationLogHandler) DeleteOperationLog(c *gin.Context) {
-	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -156,7 +132,7 @@ func (h *OperationLogHandler) DeleteOperationLog(c *gin.Context) {
 	if err := h.operationLogService.DeleteOperationLog(c, uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_delete_log") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_delete_log"), err),
 		})
 		return
 	}
@@ -167,19 +143,14 @@ func (h *OperationLogHandler) DeleteOperationLog(c *gin.Context) {
 	})
 }
 
-// BatchDeleteOperationLogs 批量删除操作日志
+// BatchDeleteOperationLogs 批量删除
 func (h *OperationLogHandler) BatchDeleteOperationLogs(c *gin.Context) {
-	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	var req struct {
 		IDs []uint `json:"ids"`
 	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": i18n.Translate(language, "error.invalid_request_data"),
@@ -187,18 +158,10 @@ func (h *OperationLogHandler) BatchDeleteOperationLogs(c *gin.Context) {
 		return
 	}
 
-	if len(req.IDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": i18n.Translate(language, "error.no_log_ids_provided"),
-		})
-		return
-	}
-
 	if err := h.operationLogService.DeleteOperationLogs(c, req.IDs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_batch_delete_logs") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_batch_delete_logs"), err),
 		})
 		return
 	}
@@ -209,16 +172,40 @@ func (h *OperationLogHandler) BatchDeleteOperationLogs(c *gin.Context) {
 	})
 }
 
-// GetOperationLogStats 获取操作日志统计信息
+// GetOperationLogStats 日志统计
 func (h *OperationLogHandler) GetOperationLogStats(c *gin.Context) {
-	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
+	language := getLanguage(c)
+
+	stats, err := h.operationLogService.GetOperationLogStats(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_get_data"), err),
+		})
+		return
 	}
 
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"code":    501,
-		"message": i18n.Translate(language, "error.not_implemented"),
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"data":    stats,
+		"message": "success",
+	})
+}
+
+// ClearOperationLogs 清空日志
+func (h *OperationLogHandler) ClearOperationLogs(c *gin.Context) {
+	language := getLanguage(c)
+
+	if err := h.operationLogService.ClearOperationLogs(c); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_delete_log"), err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": i18n.Translate(language, "message.deleted_successfully"),
 	})
 }

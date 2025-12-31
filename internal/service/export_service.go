@@ -69,7 +69,7 @@ func (s *ExportService) ExportToExcel(data []map[string]interface{}, headers map
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Println(err)
+			// 关闭Excel文件失败，忽略错误
 		}
 	}()
 

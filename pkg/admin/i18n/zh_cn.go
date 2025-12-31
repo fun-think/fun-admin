@@ -20,7 +20,7 @@ var ChineseResources = map[string]string{
 	"yes":            "是",
 	"no":             "否",
 	"select_all":     "全选",
-	" deselect_all":  "取消全选",
+	"deselect_all":   "取消全选",
 	"selected_items": "已选择 %d 项",
 
 	// 字段类型
@@ -79,16 +79,35 @@ var ChineseResources = map[string]string{
 	"archived":  "已归档",
 
 	// 错误消息
-	"error.create_failed":     "创建失败",
-	"error.update_failed":     "更新失败",
-	"error.delete_failed":     "删除失败",
-	"error.load_failed":       "加载失败",
-	"error.validation_failed": "验证失败",
+	"error.create_failed":               "创建失败",
+	"error.update_failed":               "更新失败",
+	"error.delete_failed":               "删除失败",
+	"error.load_failed":                 "加载失败",
+	"error.validation_failed":           "验证失败",
+	"error.keyword_required":            "请输入关键词",
+	"error.resource_not_found":          "资源不存在",
+	"error.record_not_found":            "记录不存在",
+	"error.invalid_id":                  "无效的ID",
+	"error.log_not_found":               "日志不存在",
+	"error.invalid_request_data":        "请求数据无效",
+	"error.missing_id_parameter":        "缺少ID参数",
+	"error.failed_to_get_data":          "获取数据失败",
+	"error.failed_to_create_record":     "创建记录失败",
+	"error.failed_to_update_record":     "更新记录失败",
+	"error.failed_to_delete_record":     "删除记录失败",
+	"error.failed_to_delete_log":        "删除日志失败",
+	"error.failed_to_batch_delete_logs": "批量删除日志失败",
+	"error.failed_to_perform_action":    "执行操作失败",
+	"error.action_not_supported":        "不支持的操作",
 
 	// 成功消息
-	"success.create": "创建成功",
-	"success.update": "更新成功",
-	"success.delete": "删除成功",
+	"success.create":                     "创建成功",
+	"success.update":                     "更新成功",
+	"success.delete":                     "删除成功",
+	"message.created_successfully":       "创建成功",
+	"message.updated_successfully":       "更新成功",
+	"message.deleted_successfully":       "删除成功",
+	"message.batch_deleted_successfully": "批量删除成功",
 
 	// 验证消息
 	"validation.required":   "%s 为必填项",

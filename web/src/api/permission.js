@@ -1,4 +1,4 @@
-import { useGet, usePost, usePut, useDelete } from '~/utils/request'
+import { useDelete, useGet, usePost, usePut } from '@/utils/request.js'
 
 // 获取用户权限
 export async function getUserPermissions() {

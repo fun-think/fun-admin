@@ -31,7 +31,14 @@ func NewManager(logger *logger.Logger, db *gorm.DB, enforcer *casbin.SyncedEnfor
 
 // SetupCORSMiddleware 设置CORS中间件
 func (m *Manager) SetupCORSMiddleware() gin.HandlerFunc {
-	return CORSMiddleware()
+	cfg := CORSConfig{
+		AllowedOrigins:   m.config.GetStringSlice("http.cors.allowed_origins"),
+		AllowedMethods:   m.config.GetStringSlice("http.cors.allowed_methods"),
+		AllowedHeaders:   m.config.GetStringSlice("http.cors.allowed_headers"),
+		AllowCredentials: m.config.GetBool("http.cors.allow_credentials"),
+		MaxAge:           m.config.GetDuration("http.cors.max_age"),
+	}
+	return CORSMiddleware(cfg)
 }
 
 // SetupAuthMiddleware 设置认证中间件

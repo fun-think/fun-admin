@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import { i18n, loadLanguageAsync } from '~@/locales'
 import 'dayjs/locale/zh-cn'
 import router from '~@/router'
-import { useMetaTitle } from '~/composables/meta-title'
+import { useMetaTitle } from '@/composables/meta-title'
 
 const LOCALE_KEY = 'locale'
 export const preferredLanguages = usePreferredLanguages()

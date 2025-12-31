@@ -1,4 +1,4 @@
-import { useGet, usePost, usePut, useDelete } from '~/utils/request'
+import { useDelete, useGet, usePost, usePut } from '@/utils/request.js'
 
 // 获取API列表
 export async function getApis(params = {}) {

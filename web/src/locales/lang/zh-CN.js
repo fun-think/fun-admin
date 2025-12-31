@@ -1,8 +1,8 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 
 const zhCNModules = import.meta.glob([
-  '~/locales/lang/**/zh-CN.js',
-  '~/pages/**/locales/zh-CN.js',
+  '@/locales/lang/**/zh-CN.js',
+  '@/pages/**/locales/zh-CN.js',
 ], {
   eager: true,
 })

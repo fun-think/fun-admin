@@ -2,51 +2,41 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
+	"fun-admin/internal/service"
 	"fun-admin/pkg/admin/i18n"
 
 	"github.com/gin-gonic/gin"
 )
 
+type ResourceService interface {
+	Create(ctx context.Context, resourceSlug string, data map[string]interface{}) (map[string]interface{}, error)
+	Update(ctx context.Context, resourceSlug string, id interface{}, data map[string]interface{}) error
+	Delete(ctx context.Context, resourceSlug string, id interface{}) error
+	Get(ctx context.Context, resourceSlug string, id interface{}) (map[string]interface{}, error)
+	List(
+		ctx context.Context,
+		resourceSlug string,
+		page, pageSize int,
+		filters map[string]interface{},
+		search map[string]interface{},
+		orderBy string,
+		orderDirection string,
+	) ([]map[string]interface{}, int64, error)
+	RunAction(ctx context.Context, resourceSlug string, actionName string, ids []interface{}, params map[string]interface{}) (interface{}, error)
+}
+
 // ResourceCRUDHandler 资源 CRUD 处理器
 type ResourceCRUDHandler struct {
-	resourceService interface {
-		Create(ctx context.Context, resourceSlug string, data map[string]interface{}) (map[string]interface{}, error)
-		Update(ctx context.Context, resourceSlug string, id interface{}, data map[string]interface{}) error
-		Delete(ctx context.Context, resourceSlug string, id interface{}) error
-		Get(ctx context.Context, resourceSlug string, id interface{}) (map[string]interface{}, error)
-		List(
-			ctx context.Context,
-			resourceSlug string,
-			page, pageSize int,
-			filters map[string]interface{},
-			search map[string]interface{},
-			orderBy string,
-			orderDirection string,
-		) ([]map[string]interface{}, int64, error)
-	}
+	resourceService ResourceService
 }
 
 // NewResourceCRUDHandler 创建资源 CRUD 处理器
-func NewResourceCRUDHandler(
-	resourceService interface {
-		Create(ctx context.Context, resourceSlug string, data map[string]interface{}) (map[string]interface{}, error)
-		Update(ctx context.Context, resourceSlug string, id interface{}, data map[string]interface{}) error
-		Delete(ctx context.Context, resourceSlug string, id interface{}) error
-		Get(ctx context.Context, resourceSlug string, id interface{}) (map[string]interface{}, error)
-		List(
-			ctx context.Context,
-			resourceSlug string,
-			page, pageSize int,
-			filters map[string]interface{},
-			search map[string]interface{},
-			orderBy string,
-			orderDirection string,
-		) ([]map[string]interface{}, int64, error)
-	},
-) *ResourceCRUDHandler {
+func NewResourceCRUDHandler(resourceService ResourceService) *ResourceCRUDHandler {
 	return &ResourceCRUDHandler{
 		resourceService: resourceService,
 	}
@@ -71,10 +61,7 @@ func (h *ResourceCRUDHandler) List(c *gin.Context) {
 	}
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	// 获取过滤参数
 	filters := make(map[string]interface{})
@@ -110,7 +97,8 @@ func (h *ResourceCRUDHandler) List(c *gin.Context) {
 	// 调用服务获取数据
 	results, total, err := h.resourceService.List(c, slug, page, pageSize, filters, search, orderBy, orderDirection)
 	if err != nil {
-		if _, ok := err.(*ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": i18n.Translate(language, "error.resource_not_found"),
@@ -120,7 +108,7 @@ func (h *ResourceCRUDHandler) List(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_get_data") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_get_data"), err),
 		})
 		return
 	}
@@ -142,10 +130,7 @@ func (h *ResourceCRUDHandler) Create(c *gin.Context) {
 	slug := c.Param("slug")
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	var requestData map[string]interface{}
 	if err := c.ShouldBindJSON(&requestData); err != nil {
@@ -159,7 +144,8 @@ func (h *ResourceCRUDHandler) Create(c *gin.Context) {
 	// 调用服务创建数据
 	result, err := h.resourceService.Create(c, slug, requestData)
 	if err != nil {
-		if _, ok := err.(*ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": i18n.Translate(language, "error.resource_not_found"),
@@ -167,7 +153,8 @@ func (h *ResourceCRUDHandler) Create(c *gin.Context) {
 			return
 		}
 
-		if validationErr, ok := err.(*ValidationError); ok {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    400,
 				"message": i18n.Translate(language, "error.validation_failed"),
@@ -178,7 +165,7 @@ func (h *ResourceCRUDHandler) Create(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_create_record") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_create_record"), err),
 		})
 		return
 	}
@@ -196,10 +183,7 @@ func (h *ResourceCRUDHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -212,7 +196,8 @@ func (h *ResourceCRUDHandler) Get(c *gin.Context) {
 	// 调用服务获取数据
 	result, err := h.resourceService.Get(c, slug, id)
 	if err != nil {
-		if _, ok := err.(*ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": i18n.Translate(language, "error.resource_not_found"),
@@ -222,7 +207,7 @@ func (h *ResourceCRUDHandler) Get(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_get_data") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_get_data"), err),
 		})
 		return
 	}
@@ -248,10 +233,7 @@ func (h *ResourceCRUDHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -273,7 +255,8 @@ func (h *ResourceCRUDHandler) Update(c *gin.Context) {
 	// 调用服务更新数据
 	err := h.resourceService.Update(c, slug, id, requestData)
 	if err != nil {
-		if _, ok := err.(*ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": i18n.Translate(language, "error.resource_not_found"),
@@ -281,7 +264,8 @@ func (h *ResourceCRUDHandler) Update(c *gin.Context) {
 			return
 		}
 
-		if validationErr, ok := err.(*ValidationError); ok {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    400,
 				"message": i18n.Translate(language, "error.validation_failed"),
@@ -292,7 +276,7 @@ func (h *ResourceCRUDHandler) Update(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_update_record") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_update_record"), err),
 		})
 		return
 	}
@@ -309,10 +293,7 @@ func (h *ResourceCRUDHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 
 	// 获取语言参数
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -325,7 +306,8 @@ func (h *ResourceCRUDHandler) Delete(c *gin.Context) {
 	// 调用服务删除数据
 	err := h.resourceService.Delete(c, slug, id)
 	if err != nil {
-		if _, ok := err.(*ResourceNotFoundError); ok {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    404,
 				"message": i18n.Translate(language, "error.resource_not_found"),
@@ -335,7 +317,7 @@ func (h *ResourceCRUDHandler) Delete(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": i18n.Translate(language, "error.failed_to_delete_record") + ": " + err.Error(),
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_delete_record"), err),
 		})
 		return
 	}
@@ -346,20 +328,61 @@ func (h *ResourceCRUDHandler) Delete(c *gin.Context) {
 	})
 }
 
-// ResourceNotFoundError 资源不存在错误
-type ResourceNotFoundError struct {
-	ResourceSlug string
-}
+// RunAction 执行资源动作（包括批量）
+func (h *ResourceCRUDHandler) RunAction(c *gin.Context) {
+	slug := c.Param("slug")
+	action := c.Param("action")
+	language := getLanguage(c)
 
-func (e *ResourceNotFoundError) Error() string {
-	return "resource not found: " + e.ResourceSlug
-}
+	var payload struct {
+		IDs    []interface{}          `json:"ids"`
+		Params map[string]interface{} `json:"params"`
+	}
 
-// ValidationError 验证错误
-type ValidationError struct {
-	Errors map[string][]string
-}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		if errors.Is(err, io.EOF) {
+			payload.Params = map[string]interface{}{}
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    400,
+				"message": i18n.Translate(language, "error.invalid_request_data"),
+			})
+			return
+		}
+	}
+	if payload.Params == nil {
+		payload.Params = map[string]interface{}{}
+	}
 
-func (e *ValidationError) Error() string {
-	return "validation failed"
+	result, err := h.resourceService.RunAction(c, slug, action, payload.IDs, payload.Params)
+	if err != nil {
+		var notFoundErr *service.ResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    404,
+				"message": i18n.Translate(language, "error.resource_not_found"),
+			})
+			return
+		}
+
+		if errors.Is(err, service.ErrActionNotSupported) {
+			c.JSON(http.StatusNotImplemented, gin.H{
+				"code":    http.StatusNotImplemented,
+				"message": i18n.Translate(language, "error.action_not_supported"),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": messageWithDebugError(i18n.Translate(language, "error.failed_to_perform_action"), err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"data":    result,
+		"message": "success",
+	})
 }

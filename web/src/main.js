@@ -6,9 +6,10 @@ import {
   setupAccessDirective,
   setupLoadingDirective,
 } from './directive/index.js'
-import router from '~/router'
+import router from '@/router'
+import '@/router/router-guard'
 import 'ant-design-vue/dist/reset.css'
-import '~/assets/styles/reset.css'
+import '@/assets/styles/reset.css'
 import 'uno.css'
 
 const pinia = createPinia()

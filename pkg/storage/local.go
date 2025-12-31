@@ -18,16 +18,16 @@ type LocalStorage struct {
 }
 
 // NewLocalStorage 创建本地存储实例
-func NewLocalStorage(basePath, domain string) *LocalStorage {
+func NewLocalStorage(basePath, domain string) (*LocalStorage, error) {
 	// 确保基础路径存在
 	if err := os.MkdirAll(basePath, 0755); err != nil {
-		panic(fmt.Sprintf("创建本地存储目录失败: %v", err))
+		return nil, fmt.Errorf("创建本地存储目录失败: %w", err)
 	}
 
 	return &LocalStorage{
 		basePath: basePath,
 		domain:   domain,
-	}
+	}, nil
 }
 
 // Upload 上传文件

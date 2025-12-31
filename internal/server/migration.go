@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"fun-admin/internal/migrate"
 	"fun-admin/internal/model"
@@ -33,10 +35,12 @@ func (RoleResource) TableName() string {
 }
 
 type MigrateServer struct {
-	db  *gorm.DB
-	log *logger.Logger
-	sid *sid.Sid
-	e   *casbin.SyncedEnforcer
+	db             *gorm.DB
+	log            *logger.Logger
+	sid            *sid.Sid
+	e              *casbin.SyncedEnforcer
+	allowDropTable bool
+	adminPassword  string
 }
 
 func NewMigrateServer(
@@ -44,23 +48,35 @@ func NewMigrateServer(
 	log *logger.Logger,
 	sid *sid.Sid,
 	e *casbin.SyncedEnforcer,
+	allowDrop bool,
+	adminPassword string,
 ) *MigrateServer {
 	return &MigrateServer{
-		e:   e,
-		db:  db,
-		log: log,
-		sid: sid,
+		e:              e,
+		db:             db,
+		log:            log,
+		sid:            sid,
+		allowDropTable: allowDrop,
+		adminPassword:  adminPassword,
 	}
 }
 
 func (m *MigrateServer) Start(ctx context.Context) error {
-	m.db.Migrator().DropTable(
-		&model.User{},
-		&model.Menu{},
-		&model.Role{},
-		&model.Api{},
-		&RoleResource{},
-	)
+	if m.allowDropTable {
+		m.log.Warn("Dropping existing tables before migration. Ensure backups are created.")
+		if err := m.db.Migrator().DropTable(
+			&model.User{},
+			&model.Menu{},
+			&model.Role{},
+			&model.Api{},
+			&RoleResource{},
+		); err != nil {
+			m.log.Error("failed to drop existing tables", zap.Error(err))
+			return err
+		}
+	} else {
+		m.log.Info("Running migration without dropping existing tables. Use --allow-drop to force a clean install.")
+	}
 	if err := m.db.AutoMigrate(
 		&model.User{},
 		&model.Menu{},
@@ -110,26 +126,47 @@ func (m *MigrateServer) Stop(ctx context.Context) error {
 }
 
 func (m *MigrateServer) initialAdminUser(ctx context.Context) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	var existing model.User
+	if err := m.db.WithContext(ctx).Where("username = ?", "admin").First(&existing).Error; err == nil {
+		m.log.Info("Admin user already exists, skip initializing credentials")
+		return nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	password, generated, err := m.resolveAdminPassword()
+	if err != nil {
+		return err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	// 创建管理员用户
-	err = m.db.Create(&model.User{
-		ID:       1,
+	if err := m.db.Create(&model.User{
+		BaseModel: model.BaseModel{
+			ID: 1,
+		},
 		Username: "admin",
 		Password: string(hashedPassword),
 		Nickname: "Admin",
-	}).Error
-
-	if err != nil {
+	}).Error; err != nil {
 		return err
 	}
 
-	// 创建普通用户
+	if generated {
+		m.log.Warn("Admin user created with generated password, please change it immediately",
+			zap.String("username", "admin"),
+			zap.String("password", password))
+	}
+
+	// 创建普通用户（用于演示）
 	return m.db.Create(&model.User{
-		ID:       2,
+		BaseModel: model.BaseModel{
+			ID: 2,
+		},
 		Username: "user",
 		Password: string(hashedPassword),
 		Nickname: "运营人员",
@@ -213,6 +250,34 @@ func (m *MigrateServer) initialRBAC(ctx context.Context) error {
 
 	// 保存策略到数据库
 	return m.e.SavePolicy()
+}
+
+func (m *MigrateServer) resolveAdminPassword() (string, bool, error) {
+	if m.adminPassword != "" {
+		if len(m.adminPassword) < 12 {
+			return "", false, fmt.Errorf("admin password must be at least 12 characters")
+		}
+		return m.adminPassword, false, nil
+	}
+
+	securePassword, err := generateSecurePassword(24)
+	if err != nil {
+		return "", false, err
+	}
+	m.adminPassword = securePassword
+	return securePassword, true, nil
+}
+
+func generateSecurePassword(length int) (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^*()-_=+"
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b), nil
 }
 
 func (m *MigrateServer) initialApisData(ctx context.Context) error {
@@ -329,5 +394,29 @@ var menuData = `[
     "name": "AccessAPI",
     "component": "/access/api",
     "locale": "menu.access.api"
+  }
+  ,
+  {
+    "id": 44,
+    "parentId": 0,
+    "path": "/list",
+    "component": "RouteView",
+    "redirect": "/list/crud-table",
+    "title": "列表页",
+    "name": "List",
+    "locale": "menu.list",
+    "icon": "TableOutlined",
+    "weight": 3
+  },
+  {
+    "id": 45,
+    "parentId": 44,
+    "path": "/list/crud-table",
+    "component": "/list/crud-table",
+    "title": "增删改查表格",
+    "name": "CrudTable",
+    "locale": "menu.list.crud-table",
+    "icon": "TableOutlined",
+    "keepAlive": true
   }
 ]`

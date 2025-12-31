@@ -3,7 +3,7 @@ export const STORAGE_AUTHORIZE_KEY = 'Authorization'
 // 修改useAuthorization函数，确保正确处理Bearer token
 export const useAuthorization = createGlobalState(() => {
   const token = useStorage(STORAGE_AUTHORIZE_KEY, null, undefined, { mergeDefaults: true })
-  
+
   // 创建一个包装器来处理Bearer前缀
   return computed({
     get: () => {
@@ -17,9 +17,10 @@ export const useAuthorization = createGlobalState(() => {
       // 存储时不带Bearer前缀
       if (newToken && newToken.startsWith('Bearer ')) {
         token.value = newToken.substring(7) // 移除"Bearer "前缀
-      } else {
+      }
+      else {
         token.value = newToken
       }
-    }
+    },
   })
 })

@@ -1,7 +1,7 @@
 <script setup>
 import { isFunction } from '@v-c/utils'
 import { useLayoutMenuInject } from './context.js'
-import { useLayoutState } from '~/layouts/basic-layout/context'
+import { useLayoutState } from '@/layouts/basic-layout/context'
 
 defineProps({
   title: { type: String, required: false },

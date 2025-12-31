@@ -1,6 +1,6 @@
 export default {
   // LoginPage
-  'pages.layouts.userLayout.title': 'Go-Admin is a universal middle-stage management system based on Ant Design Vue',
+  'pages.layouts.userLayout.title': 'N-Admin is a universal middle-stage management system based on Ant Design Vue',
   'pages.login.accountLogin.tab': 'Account Login',
   'pages.login.accountLogin.errorMessage': 'Incorrect username/password',
   'pages.login.failure': 'Login failed, please try again!',

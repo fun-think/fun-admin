@@ -54,7 +54,7 @@ func (h *LoginHandler) Login(ctx *gin.Context) {
 // @Tags 用户模块
 // @Accept json
 // @Produce json
-// @Param mobile query string true "手机号"
+// @Param request body object{mobile:string} true "手机号"
 // @Success 200 {object} v1.Response
 // @Router /v1/send-sms-code [post]
 func (h *LoginHandler) SendSMSCode(ctx *gin.Context) {
@@ -66,7 +66,10 @@ func (h *LoginHandler) SendSMSCode(ctx *gin.Context) {
 		return
 	}
 
-	// 实际项目中这里应该调用短信服务发送验证码
-	// 这里为了演示，直接返回成功
+	if err := h.loginService.SendSMSCode(ctx, req.Mobile); err != nil {
+		v1.HandleError(ctx, err)
+		return
+	}
+
 	v1.HandleSuccess(ctx, nil)
 }

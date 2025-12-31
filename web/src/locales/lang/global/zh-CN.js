@@ -76,6 +76,8 @@ export default {
   'menu.access.roles': '角色管理',
   'menu.access.menus': '菜单管理',
   'menu.access.api': '接口管理',
+  'menu.list': '列表页',
+  'menu.list.crud-table': '增删改查表格',
   'menu.access.user': '普通用户',
   'menu.access.admin': '管理账号',
   'menu.result': '结果页',

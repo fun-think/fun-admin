@@ -29,7 +29,10 @@ func main() {
 	userRepo := repository.NewUserRepository(log, db, nil)
 
 	// 创建任务组件
-	baseSid := sid.NewSid()
+	baseSid, err := sid.NewSid()
+	if err != nil {
+		log.Fatal("create sid error", zap.Error(err))
+	}
 	baseTask := task.NewTask(transaction, log, baseSid)
 	userTask := task.NewUserTask(baseTask, userRepo)
 	taskServer := server.NewTaskServer(log, userTask)

@@ -19,6 +19,14 @@ export default ({ mode }: ConfigEnv): UserConfig => {
       rewrite: path => path.replace(new RegExp(`^${env.VITE_APP_BASE_API_DEV}`), ''),
     }
   }
+  // 添加对生产环境API的代理支持
+  if (env.VITE_APP_BASE_API && env.VITE_APP_BASE_URL) {
+    proxyObj[env.VITE_APP_BASE_API] = {
+      target: env.VITE_APP_BASE_URL,
+      changeOrigin: true,
+      rewrite: path => path.replace(new RegExp(`^${env.VITE_APP_BASE_API}`), ''),
+    }
+  }
   return {
     plugins: createVitePlugins(env),
     resolve: {

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"fun-admin/pkg/database"
 	"fun-admin/pkg/logger"
 	"fun-admin/pkg/zapgorm2"
@@ -14,6 +13,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -114,16 +114,19 @@ func NewDB(conf *viper.Viper, l *logger.Logger) *gorm.DB {
 	case "sqlite":
 		db, err = gorm.Open(sqlite.Open(dsn), config)
 	default:
-		panic("unknown db driver")
+		l.Fatal("unknown database driver", zap.String("driver", driver))
+		return nil
 	}
 	if err != nil {
-		panic(fmt.Sprintf("failed to connect database: %v", err))
+		l.Fatal("failed to connect database", zap.Error(err))
+		return nil
 	}
 
 	// 获取通用数据库对象sql.DB来设置连接池
 	sqlDB, err := db.DB()
 	if err != nil {
-		panic(fmt.Sprintf("failed to get sql.DB: %v", err))
+		l.Fatal("failed to get sql.DB", zap.Error(err))
+		return nil
 	}
 
 	// 设置连接池参数
@@ -158,7 +161,8 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 `)
 
 	if err != nil {
-		panic(err)
+		l.Fatal("failed to create casbin model", zap.Error(err))
+		return nil
 	}
 	e, _ := casbin.NewSyncedEnforcer(m, a)
 
@@ -187,7 +191,9 @@ func NewRedis(conf *viper.Viper) *redis.Client {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		panic(fmt.Sprintf("redis error: %s", err.Error()))
+		// Redis 连接失败不应该致命，记录错误即可
+		// 程序可以继续运行，使用内存缓存
+		return nil
 	}
 
 	return rdb

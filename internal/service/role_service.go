@@ -39,7 +39,9 @@ func (s *roleService) RoleUpdate(ctx context.Context, req *v1.RoleUpdateRequest)
 	return s.roleRepository.RoleUpdate(ctx, &model.Role{
 		Name: req.Name,
 		Sid:  req.Sid,
-		ID:   req.ID,
+		BaseModel: model.BaseModel{
+			ID: req.ID,
+		},
 	})
 }
 

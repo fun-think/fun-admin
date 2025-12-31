@@ -75,7 +75,7 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		v1.HandleError(c, errors.New("请求参数错误"))
+		v1.HandleValidationError(c, err.Error())
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *ProfileHandler) UpdatePassword(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		v1.HandleError(c, errors.New("请求参数错误"))
+		v1.HandleValidationError(c, err.Error())
 		return
 	}
 

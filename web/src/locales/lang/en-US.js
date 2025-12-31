@@ -1,8 +1,8 @@
 import enUS from 'ant-design-vue/es/locale/en_US'
 
 const enUSModules = import.meta.glob([
-  '~/locales/lang/**/en-US.js',
-  '~/pages/**/locales/en-US.js',
+  '@/locales/lang/**/en-US.js',
+  '@/pages/**/locales/en-US.js',
 ], {
   eager: true,
 })

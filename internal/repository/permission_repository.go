@@ -23,6 +23,7 @@ type PermissionRepository interface {
 	GetAllRoles(ctx context.Context) ([]string, error)
 	AddPermissionForUser(ctx context.Context, user string, permission ...string) (bool, error)
 	DeletePermissionForUser(ctx context.Context, user string, permission ...string) (bool, error)
+	GetUsersForRole(ctx context.Context, role string) ([]string, error) // 添加此方法
 }
 
 func NewPermissionRepository(
@@ -91,4 +92,8 @@ func (r *permissionRepository) AddPermissionForUser(ctx context.Context, user st
 
 func (r *permissionRepository) DeletePermissionForUser(ctx context.Context, user string, permission ...string) (bool, error) {
 	return r.enforcer.DeletePermissionForUser(user, permission...)
+}
+
+func (r *permissionRepository) GetUsersForRole(ctx context.Context, role string) ([]string, error) {
+	return r.enforcer.GetUsersForRole(role)
 }

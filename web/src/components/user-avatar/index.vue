@@ -6,7 +6,7 @@ const userStore = useUserStore()
 const multiTabStore = useMultiTab()
 const layoutMenuStore = useLayoutMenu()
 const router = useRouter()
-const { avatar, nickname,userInfo } = storeToRefs(userStore)
+const { avatar, nickname, userInfo } = storeToRefs(userStore)
 async function handleClick({ key }) {
   if (key === 'logout') {
     const hide = message.loading('退出登录...', 0)

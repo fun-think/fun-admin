@@ -33,7 +33,7 @@ func (h *BaseHandler) Success(c *gin.Context, data interface{}) {
 
 // Error 返回错误响应
 func (h *BaseHandler) Error(c *gin.Context, err error) {
-	v1.HandleError(c, err, h.logger.Logger)
+	v1.HandleError(c, err)
 }
 
 // BadRequest 返回请求参数错误
@@ -76,7 +76,7 @@ func (h *BaseHandler) InternalError(c *gin.Context, err error) {
 		zap.String("path", c.Request.URL.Path),
 		zap.String("method", c.Request.Method),
 	)
-	v1.HandleInternalError(c, err, h.logger.Logger)
+	v1.HandleServerError(c, err)
 }
 
 // BindJSON 绑定JSON数据并验证

@@ -55,7 +55,9 @@ func (s *menuService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest)
 		Redirect:   req.Redirect,
 		Title:      req.Title,
 		URL:        req.URL,
-		ID:         req.ID,
+		BaseModel: model.BaseModel{
+			ID: req.ID,
+		},
 	})
 }
 

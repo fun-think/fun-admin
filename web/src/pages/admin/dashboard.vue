@@ -1,45 +1,52 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useRequest } from 'vue-request'
-import axios from 'axios'
-import * as echarts from 'echarts'
-import { Card, Row, Col, Statistic, Divider, Skeleton, List, Descriptions } from 'ant-design-vue'
-import { UserOutlined, TeamOutlined, FileTextOutlined, IdcardOutlined, DatabaseOutlined, SyncOutlined, DownOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { getDashboardData } from '@/api/dashboard.js'
 
 // 仪表板数据
 const dashboardData = ref({})
 
 // 获取当前语言
-const getCurrentLanguage = () => {
+function getCurrentLanguage() {
   return localStorage.getItem('admin-language') || 'zh-CN'
 }
 
+// 加载状态
+const loading = ref(false)
+
 // 获取仪表板数据
-const { data, loading, run } = useRequest(
-  () => axios.get('/api/admin/dashboard', { params: { language: getCurrentLanguage() } }),
-  {
-    manual: false,
-    onSuccess: (result) => {
-      if (result.data.code === 0) {
-        dashboardData.value = result.data.data
-      }
+async function fetchDashboardData() {
+  if (loading.value)
+    return
+  loading.value = true
+  try {
+    const res = await getDashboardData({ language: getCurrentLanguage() })
+    if (res.data.code === 0) {
+      dashboardData.value = res.data.data
+      processChartData()
     }
   }
-)
+  catch (error) {
+    console.error('Failed to fetch dashboard data:', error)
+    message.error('获取仪表板数据失败')
+  }
+  finally {
+    loading.value = false
+  }
+}
 
 // 图表配置
 const chartOptions = ref({
   // 用户增长图表配置
   userGrowth: {
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
     },
     xAxis: {
       type: 'category',
-      data: []
+      data: [],
     },
     yAxis: {
-      type: 'value'
+      type: 'value',
     },
     series: [
       {
@@ -47,19 +54,19 @@ const chartOptions = ref({
         type: 'line',
         smooth: true,
         itemStyle: {
-          color: '#1890ff'
-        }
-      }
-    ]
+          color: '#1890ff',
+        },
+      },
+    ],
   },
   // 文章状态图表配置
   postStatus: {
     tooltip: {
-      trigger: 'item'
+      trigger: 'item',
     },
     legend: {
       top: '5%',
-      left: 'center'
+      left: 'center',
     },
     series: [
       {
@@ -70,60 +77,61 @@ const chartOptions = ref({
         itemStyle: {
           borderRadius: 10,
           borderColor: '#fff',
-          borderWidth: 2
+          borderWidth: 2,
         },
         label: {
           show: false,
-          position: 'center'
+          position: 'center',
         },
         emphasis: {
           label: {
             show: true,
             fontSize: '18',
-            fontWeight: 'bold'
-          }
+            fontWeight: 'bold',
+          },
         },
         labelLine: {
-          show: false
+          show: false,
         },
-        data: []
-      }
-    ]
-  }
+        data: [],
+      },
+    ],
+  },
 })
 
 // 处理图表数据
-const processChartData = () => {
-  if (!dashboardData.value) return
+function processChartData() {
+  if (!dashboardData.value)
+    return
 
   // 处理用户增长数据
   const recentUsers = dashboardData.value.recent_users || []
   const dates = recentUsers.map(item => item.date)
   const counts = recentUsers.map(item => item.count)
-  
+
   chartOptions.value.userGrowth.xAxis.data = dates
   chartOptions.value.userGrowth.series[0].data = counts
 
   // 处理文章状态数据
   const postStats = dashboardData.value.post_stats || {}
   const statusData = [
-    { 
-      value: postStats.published || 0, 
+    {
+      value: postStats.published || 0,
       name: postStats.published_label || '已发布',
-      itemStyle: { color: '#52c41a' }
+      itemStyle: { color: '#52c41a' },
     },
-    { 
-      value: postStats.draft || 0, 
+    {
+      value: postStats.draft || 0,
       name: postStats.draft_label || '草稿',
-      itemStyle: { color: '#faad14' }
+      itemStyle: { color: '#faad14' },
     },
-    { 
-      value: postStats.archived || 0, 
+    {
+      value: postStats.archived || 0,
       name: postStats.archived_label || '已归档',
-      itemStyle: { color: '#bfbfbf' }
-    }
+      itemStyle: { color: '#bfbfbf' },
+    },
   ]
-  
+
   chartOptions.value.postStatus.series[0].data = statusData
 }
 
@@ -133,7 +141,7 @@ watch(dashboardData, () => {
 })
 
 onMounted(() => {
-  run()
+  fetchDashboardData()
 })
 </script>
 
@@ -197,10 +205,10 @@ onMounted(() => {
         <a-col :span="12">
           <a-card title="用户增长趋势">
             <div style="height: 300px;">
-              <v-chart 
-                v-if="chartOptions.userGrowth.xAxis.data.length > 0" 
-                :option="chartOptions.userGrowth" 
-                autoresize 
+              <v-chart
+                v-if="chartOptions.userGrowth.xAxis.data.length > 0"
+                :option="chartOptions.userGrowth"
+                autoresize
               />
               <a-skeleton v-else />
             </div>
@@ -209,10 +217,10 @@ onMounted(() => {
         <a-col :span="12">
           <a-card title="文章状态分布">
             <div style="height: 300px;">
-              <v-chart 
-                v-if="chartOptions.postStatus.series[0].data.length > 0" 
-                :option="chartOptions.postStatus" 
-                autoresize 
+              <v-chart
+                v-if="chartOptions.postStatus.series[0].data.length > 0"
+                :option="chartOptions.postStatus"
+                autoresize
               />
               <a-skeleton v-else />
             </div>
@@ -254,14 +262,18 @@ onMounted(() => {
           </template>
         </a-list>
       </a-card>
-      
+
       <!-- 语言切换 -->
       <div style="margin-top: 16px; text-align: right;">
         <a-dropdown>
           <template #overlay>
             <a-menu @click="({ key }) => { localStorage.setItem('admin-language', key); location.reload(); }">
-              <a-menu-item key="zh-CN">中文</a-menu-item>
-              <a-menu-item key="en">English</a-menu-item>
+              <a-menu-item key="zh-CN">
+                中文
+              </a-menu-item>
+              <a-menu-item key="en">
+                English
+              </a-menu-item>
             </a-menu>
           </template>
           <a-button>

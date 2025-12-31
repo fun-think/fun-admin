@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_APP_BASE_URL: string
   readonly VITE_APP_BASE_URL_DEV: string
   readonly VITE_APP_LOAD_ROUTE_WAY: 'FRONTEND' | 'BACKEND'
+  readonly VITE_GLOB_APP_TITLE: string
 }
 
 interface ImportMeta {

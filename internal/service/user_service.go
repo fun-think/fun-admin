@@ -55,7 +55,9 @@ func (s *userService) UserUpdate(ctx context.Context, req *v1.UserUpdateRequest)
 		Password: password,
 		Phone:    req.Phone,
 		Username: req.Username,
-		ID:       req.ID,
+		BaseModel: model.BaseModel{
+			ID: req.ID,
+		},
 	})
 }
 
@@ -86,6 +88,46 @@ func (s *userService) GetUsers(ctx context.Context, req *v1.GetUsersRequest) (*v
 		List:  make([]v1.UserDataItem, 0),
 		Total: total,
 	}
+	
+	// 收集用户ID列表
+	userIDs := make([]uint, 0, len(list))
+	for _, user := range list {
+		userIDs = append(userIDs, user.ID)
+	}
+	
+	// 批量获取用户角色信息
+	usersRoles := make(map[uint][]string)
+	if len(userIDs) > 0 {
+		// 使用GetAllRoles方法获取所有角色关系，然后过滤出当前用户的角色
+		// 这样可以避免多次调用GetRolesForUser造成的N+1问题
+		allRoles, err := s.permissionRepository.GetAllRoles(ctx)
+		if err != nil {
+			return nil, err
+		}
+		
+		// 创建用户ID到字符串ID的映射
+		userIDMap := make(map[string]uint)
+		for _, userID := range userIDs {
+			userIDMap[uint64ToString(uint64(userID))] = userID
+		}
+		
+		// 遍历所有角色关系，找出当前用户的
+		for _, role := range allRoles {
+			// 获取拥有该角色的所有用户
+			usersForRole, err := s.permissionRepository.GetUsersForRole(ctx, role)
+			if err != nil {
+				continue
+			}
+			
+			// 检查当前用户是否拥有该角色
+			for _, userStrID := range usersForRole {
+				if userID, exists := userIDMap[userStrID]; exists {
+					usersRoles[userID] = append(usersRoles[userID], role)
+				}
+			}
+		}
+	}
+	
 	for _, user := range list {
 		data.List = append(data.List, v1.UserDataItem{
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -95,6 +137,7 @@ func (s *userService) GetUsers(ctx context.Context, req *v1.GetUsersRequest) (*v
 			Phone:     user.Phone,
 			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
 			Username:  user.Username,
+			Roles:     usersRoles[user.ID],
 		})
 	}
 	return data, nil

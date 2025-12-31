@@ -1,23 +1,23 @@
-import { usePost, useGet, useDelete } from '~/utils/request'
+import { useDelete, useGet, usePost } from '@/utils/request.js'
 
 // 文件上传
 export async function uploadFile(file, options = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   if (options.storageType) {
     formData.append('storage_type', options.storageType)
   }
-  
+
   if (options.path) {
     formData.append('path', options.path)
   }
-  
+
   return usePost('/api/admin/upload', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'multipart/form-data',
     },
-    ...options
+    ...options,
   })
 }
 

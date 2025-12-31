@@ -94,3 +94,14 @@ type CapabilityProvider interface {
 type ActionExecutor interface {
 	RunAction(ctx context.Context, actionName string, ids []interface{}, params map[string]interface{}) (interface{}, error)
 }
+
+// FieldPermissions 定义字段级权限
+type FieldPermissions struct {
+	Readable []string
+	Writable []string
+}
+
+// FieldPermissionProvider 可选接口，允许资源自定义字段读写权限
+type FieldPermissionProvider interface {
+	GetFieldPermissions(ctx context.Context) FieldPermissions
+}

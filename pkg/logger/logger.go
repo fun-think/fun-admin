@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,33 +20,64 @@ type Logger struct {
 }
 
 func NewLogger(conf *viper.Viper) *Logger {
-	// logger address "out.logger" User-defined
-	lp := conf.GetString("logger.log_file_name")
-	lv := conf.GetString("logger.log_level")
+	firstString := func(defaultValue string, keys ...string) string {
+		for _, key := range keys {
+			if val := conf.GetString(key); val != "" {
+				return val
+			}
+		}
+		return defaultValue
+	}
+	firstInt := func(defaultValue int, keys ...string) int {
+		for _, key := range keys {
+			if conf.IsSet(key) {
+				if v := conf.GetInt(key); v != 0 {
+					return v
+				}
+			}
+		}
+		return defaultValue
+	}
+	firstBool := func(defaultValue bool, keys ...string) bool {
+		for _, key := range keys {
+			if conf.IsSet(key) {
+				return conf.GetBool(key)
+			}
+		}
+		return defaultValue
+	}
+
+	levelValue := strings.ToLower(firstString("info", "logger.level", "log.log_level"))
 	var level zapcore.Level
-	//debug<info<warn<error<fatal<panic
-	switch lv {
+	switch levelValue {
 	case "debug":
 		level = zap.DebugLevel
-	case "info":
-		level = zap.InfoLevel
 	case "warn":
 		level = zap.WarnLevel
 	case "error":
 		level = zap.ErrorLevel
+	case "panic":
+		level = zap.PanicLevel
+	case "fatal":
+		level = zap.FatalLevel
 	default:
 		level = zap.InfoLevel
 	}
+
+	fileEnabled := firstBool(false, "logger.file.enabled", "log.enable_file_logger")
+	logPath := firstString("./storage/logs/server.log", "logger.file.path", "log.log_file_name")
+	encoderStyle := firstString("json", "logger.encoding", "log.encoding")
+
 	hook := lumberjack.Logger{
-		Filename:   lp,                                // Log file path
-		MaxSize:    conf.GetInt("logger.max_size"),    // Maximum size unit for each logger file: M
-		MaxBackups: conf.GetInt("logger.max_backups"), // The maximum number of backups that can be saved for logger files
-		MaxAge:     conf.GetInt("logger.max_age"),     // Maximum number of days the file can be saved
-		Compress:   conf.GetBool("logger.compress"),   // Compression or not
+		Filename:   logPath,
+		MaxSize:    firstInt(100, "logger.file.max_size", "log.max_size"),
+		MaxBackups: firstInt(3, "logger.file.max_backups", "log.max_backups"),
+		MaxAge:     firstInt(28, "logger.file.max_age", "log.max_age"),
+		Compress:   firstBool(false, "logger.file.compress", "log.compress"),
 	}
 
 	var encoder zapcore.Encoder
-	if conf.GetString("logger.encoding") == "console" {
+	if encoderStyle == "console" {
 		encoder = zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
 			TimeKey:        "ts",
 			LevelKey:       "level",
@@ -75,12 +107,19 @@ func NewLogger(conf *viper.Viper) *Logger {
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		})
 	}
+	writers := []zapcore.WriteSyncer{zapcore.AddSync(os.Stdout)}
+	if fileEnabled {
+		writers = append(writers, zapcore.AddSync(&hook))
+	}
+
 	core := zapcore.NewCore(
 		encoder,
-		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook)), // Print to console and file
+		zapcore.NewMultiWriteSyncer(writers...),
 		level,
 	)
-	if conf.GetString("env") != "prod" {
+
+	env := strings.ToLower(firstString("", "app.env", "env"))
+	if env != "prod" && env != "production" {
 		return &Logger{zap.New(core, zap.Development(), zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))}
 	}
 	return &Logger{zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel))}

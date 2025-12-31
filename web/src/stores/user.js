@@ -1,47 +1,51 @@
-import { getUserInfoApi } from '~@/api/common/user'
-import { defineStore } from 'pinia'
-import { useStorage } from '@vueuse/core'
-import { useAuthorization } from '~/composables/authorization'
+import { getMenus } from '~@/api/menu'
+import { getProfile } from '~@/api/profile'
+import { rootRoute } from '~@/router/constant'
+import { generateFlatRoutes, generateRoutes, generateTreeRoutes } from '~@/router/generate-route'
+import { DYNAMIC_LOAD_WAY, DynamicLoadEnum } from '~@/utils/constant'
 
 export const useUserStore = defineStore('user', () => {
-  // 用户信息存储在localStorage中
-  const user = useStorage('user', null)
-
-  // 设置用户信息
-  const setUser = (userData) => {
-    user.value = userData
+  const routerData = shallowRef()
+  const menuData = shallowRef([])
+  const userInfo = shallowRef()
+  const token = useAuthorization()
+  const avatar = computed(() => userInfo.value?.avatar)
+  const nickname = computed(() => userInfo.value?.nickname !== '' ? userInfo.value?.nickname : userInfo.value?.username)
+  const roles = computed(() => userInfo.value?.roles)
+  const getMenuRoutes = async () => {
+    const { data } = await getMenus()
+    return generateTreeRoutes(data.list ?? [])
   }
-
-  // 清除用户信息
-  const logout = () => {
-    user.value = null
-  }
-
-  // 检查是否已登录
-  const isLoggedIn = computed(() => {
-    return !!user.value
-  })
-
-  // 获取用户信息
-  const getUserInfo = async () => {
-    try {
-      const res = await getUserInfoApi()
-      if (res.code === 0) {
-        setUser(res.data?.user || null)
-        return res.data?.user || null
-      }
-      return null
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
-      return null
+  const generateDynamicRoutes = async () => {
+    const dynamicLoadWay = DYNAMIC_LOAD_WAY === DynamicLoadEnum.BACKEND ? getMenuRoutes : generateRoutes
+    const { menuData: treeMenuData, routeData } = await dynamicLoadWay()
+    menuData.value = treeMenuData
+    routerData.value = {
+      ...rootRoute,
+      children: generateFlatRoutes(routeData),
     }
+    return routerData.value
   }
-
+  const getUserInfo = async () => {
+    const { data } = await getProfile()
+    userInfo.value = data
+  }
+  const logout = async () => {
+    token.value = null
+    userInfo.value = void 0
+    routerData.value = void 0
+    menuData.value = []
+    window.location.href = '/login'
+  }
   return {
-    user,
-    setUser,
+    userInfo,
+    roles,
+    getUserInfo,
     logout,
-    isLoggedIn,
-    getUserInfo
+    routerData,
+    menuData,
+    generateDynamicRoutes,
+    avatar,
+    nickname,
   }
 })

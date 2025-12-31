@@ -28,10 +28,7 @@ func NewDashboardHandler(
 // GetDashboard 获取仪表板数据
 func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 	// 获取语言参数，默认为中文
-	language := c.Query("language")
-	if language == "" {
-		language = "zh-CN"
-	}
+	language := getLanguage(c)
 
 	// 获取各种统计数据
 	stats, err := h.dashboardService.GetDashboardStats(c, language)

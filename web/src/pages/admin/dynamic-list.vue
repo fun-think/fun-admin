@@ -1,18 +1,18 @@
 <script setup>
-import { ref, onMounted, reactive, h } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { message } from 'ant-design-vue'
 import {
-  getResourceConfig,
-  getResourceData,
   deleteResourceRecord,
   deleteResourceRecords,
-  runResourceAction
-} from '~/api/admin/resources.js'
-import { useAccess } from '~/composables/access.js'
+  getResourceConfig,
+  getResourceData,
+  runResourceAction,
+} from '@/api/resources.js'
+import { useAccess } from '@/composables/access.js'
 
 const route = useRoute()
 const router = useRouter()
-const message = useMessage()
 
 // 获取资源标识符
 const resourceSlug = route.params.slug
@@ -24,7 +24,7 @@ const loading = ref(false)
 const pagination = ref({
   current: 1,
   pageSize: 10,
-  total: 0
+  total: 0,
 })
 // 排序
 const orderBy = ref('')
@@ -57,18 +57,18 @@ const searchableNames = ref([])
 const filterDefs = ref([])
 
 // 获取当前语言
-const getCurrentLanguage = () => {
+function getCurrentLanguage() {
   // 这里可以从 localStorage 或其他地方获取当前语言设置
   return localStorage.getItem('admin-language') || 'zh-CN'
 }
 
 // 获取资源配置
-const fetchResourceConfig = async () => {
+async function fetchResourceConfig() {
   // 仪表板不需要资源配置
   if (resourceSlug === 'dashboard') {
     return
   }
-  
+
   try {
     const res = await getResourceConfig(resourceSlug, { language: getCurrentLanguage() })
     if (res.code === 0) {
@@ -76,7 +76,8 @@ const fetchResourceConfig = async () => {
       // 根据字段配置生成表格列（优先使用后端 columns 元信息）
       if (res.data.columns && res.data.columns.length) {
         generateColumnsFromColumns(res.data.columns)
-      } else {
+      }
+      else {
         generateColumns(res.data.fields)
       }
       // 基于白名单构建搜索与过滤定义
@@ -85,29 +86,33 @@ const fetchResourceConfig = async () => {
       loadSavedFilters()
       // 获取数据
       fetchData()
-    } else {
+    }
+    else {
       message.error(res.msg || '获取资源配置失败')
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Failed to fetch resource config:', error)
     message.error('获取资源配置失败')
   }
 }
 
 // 基于后端白名单构建搜索与过滤 UI 定义
-const buildSearchAndFilters = () => {
+function buildSearchAndFilters() {
   const fields = resourceConfig.value?.fields || []
   const fieldMap = Object.fromEntries(fields.map(f => [f.name, f]))
   // 搜索字段：优先使用后端 searchable_fields
   if (Array.isArray(resourceConfig.value?.searchable_fields) && resourceConfig.value.searchable_fields.length) {
     searchableNames.value = resourceConfig.value.searchable_fields.filter(n => fieldMap[n])
-  } else {
+  }
+  else {
     searchableNames.value = fields.filter(f => ['text', 'email', 'textarea'].includes(f.type)).map(f => f.name)
   }
   // 过滤字段：优先使用后端 filters 元信息
   if (Array.isArray(resourceConfig.value?.filters) && resourceConfig.value.filters.length) {
     filterDefs.value = resourceConfig.value.filters
-  } else {
+  }
+  else {
     filterDefs.value = fields
       .filter(f => ['select', 'boolean'].includes(f.type))
       .map(f => ({ name: f.name, label: f.label, type: f.type, options: f.options || [] }))
@@ -117,15 +122,17 @@ const buildSearchAndFilters = () => {
 }
 
 // 计算当前激活的 chips
-const buildActiveChips = () => {
+function buildActiveChips() {
   const fields = resourceConfig.value?.fields || []
-  const labelOf = (name) => fields.find(f => f.name === name)?.label || name
+  const labelOf = name => fields.find(f => f.name === name)?.label || name
   const chips = []
   Object.entries(searchForm).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') chips.push({ key: `search_${k}`, label: `${labelOf(k)}:${v}`, type: 'search', name: k })
+    if (v !== undefined && v !== null && v !== '')
+      chips.push({ key: `search_${k}`, label: `${labelOf(k)}:${v}`, type: 'search', name: k })
   })
   Object.entries(filterForm).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') chips.push({ key: `filter_${k}`, label: `${labelOf(k)}:${v}`, type: 'filter', name: k })
+    if (v !== undefined && v !== null && v !== '')
+      chips.push({ key: `filter_${k}`, label: `${labelOf(k)}:${v}`, type: 'filter', name: k })
   })
   activeChips.value = chips
 }
@@ -134,15 +141,16 @@ const buildActiveChips = () => {
 const filterStorageKey = () => `admin:filters:${resourceSlug}`
 
 // 读取/保存筛选器
-const loadSavedFilters = () => {
+function loadSavedFilters() {
   try {
     const raw = localStorage.getItem(filterStorageKey())
     savedFilters.value = raw ? JSON.parse(raw) : []
-  } catch {
+  }
+  catch {
     savedFilters.value = []
   }
 }
-const saveCurrentFilter = () => {
+function saveCurrentFilter() {
   if (!savedFilterName.value.trim()) {
     message.warning('请输入筛选器名称')
     return
@@ -154,9 +162,10 @@ const saveCurrentFilter = () => {
   localStorage.setItem(filterStorageKey(), JSON.stringify(list))
   message.success('已保存筛选器')
 }
-const applySavedFilter = (name) => {
+function applySavedFilter(name) {
   const found = savedFilters.value.find(f => f.name === name)
-  if (!found) return
+  if (!found)
+    return
   Object.keys(searchForm).forEach(k => delete searchForm[k])
   Object.keys(filterForm).forEach(k => delete filterForm[k])
   Object.assign(searchForm, found.search || {})
@@ -165,21 +174,22 @@ const applySavedFilter = (name) => {
   buildActiveChips()
   fetchData(1)
 }
-const deleteSavedFilter = (name) => {
+function deleteSavedFilter(name) {
   savedFilters.value = savedFilters.value.filter(f => f.name !== name)
   localStorage.setItem(filterStorageKey(), JSON.stringify(savedFilters.value))
-  if (selectedSavedFilter.value === name) selectedSavedFilter.value = ''
+  if (selectedSavedFilter.value === name)
+    selectedSavedFilter.value = ''
 }
 
 // 根据字段配置生成表格列
-const generateColumns = (fields) => {
-  const cols = fields.map(field => {
+function generateColumns(fields) {
+  const cols = fields.map((field) => {
     const col = {
       title: field.label,
       dataIndex: field.name,
-      key: field.name
+      key: field.name,
     }
-    
+
     // 根据字段类型处理显示
     switch (field.type) {
       case 'boolean':
@@ -192,7 +202,7 @@ const generateColumns = (fields) => {
       case 'relationship':
         // 关联字段显示关联数据
         col.customRender = ({ record }) => {
-          const relatedData = record[field.name + '_data']
+          const relatedData = record[`${field.name}_data`]
           if (relatedData) {
             return relatedData[field.display_field || 'name'] || relatedData.id
           }
@@ -200,25 +210,25 @@ const generateColumns = (fields) => {
         }
         break
     }
-    
+
     return col
   })
-  
+
   // 添加操作列
   cols.push({
     title: '操作',
     dataIndex: 'action',
-    key: 'action'
+    key: 'action',
   })
-  
+
   columns.value = cols
   allColumns.value = cols
   visibleKeys.value = cols.filter(c => c.dataIndex !== 'action').map(c => c.dataIndex)
 }
 
 // 根据后端列元信息构建 a-table 列
-const generateColumnsFromColumns = (colsMeta) => {
-  const cols = colsMeta.map(col => {
+function generateColumnsFromColumns(colsMeta) {
+  const cols = colsMeta.map((col) => {
     const column = {
       title: col.label,
       dataIndex: col.name,
@@ -226,19 +236,25 @@ const generateColumnsFromColumns = (colsMeta) => {
       align: col.align || 'left',
       sorter: !!col.sortable,
     }
-    if (col.width) column.width = col.width
-    if (col.sticky) column.fixed = col.sticky
+    if (col.width)
+      column.width = col.width
+    if (col.sticky)
+      column.fixed = col.sticky
     // 通用渲染：布尔/日期/枚举/徽章/图片/头像/链接/自定义格式化
     column.customRender = ({ text, record }) => {
       if (col.badgeMap && text in col.badgeMap) {
         return h('span', { style: { display: 'inline-block', padding: '0 8px', borderRadius: '4px', backgroundColor: col.badgeMap[text], color: '#fff' } }, col.enumMap?.[text] || String(text))
       }
-      if (col.enumMap && text in col.enumMap) return col.enumMap[text]
-      if (col.type === 'boolean') return text ? '是' : '否'
-      if (col.type === 'date' || col.type === 'datetime') return text ? new Date(text).toLocaleString() : ''
+      if (col.enumMap && text in col.enumMap)
+        return col.enumMap[text]
+      if (col.type === 'boolean')
+        return text ? '是' : '否'
+      if (col.type === 'date' || col.type === 'datetime')
+        return text ? new Date(text).toLocaleString() : ''
       if (col.type === 'image' || col.type === 'avatar') {
         const url = typeof text === 'string' ? text : ''
-        if (!url) return ''
+        if (!url)
+          return ''
         return h('img', { src: url, style: { width: col.type === 'avatar' ? '32px' : '72px', height: col.type === 'avatar' ? '32px' : 'auto', borderRadius: col.type === 'avatar' ? '50%' : '4px', objectFit: 'cover' } })
       }
       if (col.type === 'link') {
@@ -246,7 +262,8 @@ const generateColumnsFromColumns = (colsMeta) => {
         return url ? h('a', { href: url, target: '_blank' }, text || '查看') : ''
       }
       if (col.formatter) {
-        if (col.formatter === 'datetimeFromNow' && text) return new Date(text).toLocaleString()
+        if (col.formatter === 'datetimeFromNow' && text)
+          return new Date(text).toLocaleString()
       }
       return text ?? ''
     }
@@ -260,7 +277,7 @@ const generateColumnsFromColumns = (colsMeta) => {
 }
 
 // 获取数据
-const fetchData = async (page = 1) => {
+async function fetchData(page = 1) {
   loading.value = true
   try {
     // 构建查询参数
@@ -271,45 +288,48 @@ const fetchData = async (page = 1) => {
       order_by: orderBy.value || resourceConfig.value?.default_order?.field,
       order_direction: orderDirection.value || resourceConfig.value?.default_order?.direction,
     }
-    
+
     // 添加过滤参数
-    Object.keys(filterForm).forEach(key => {
+    Object.keys(filterForm).forEach((key) => {
       if (filterForm[key] !== undefined && filterForm[key] !== null && filterForm[key] !== '') {
         params[key] = filterForm[key]
       }
     })
-    
+
     // 添加搜索参数
-    Object.keys(searchForm).forEach(key => {
+    Object.keys(searchForm).forEach((key) => {
       if (searchForm[key] !== undefined && searchForm[key] !== null && searchForm[key] !== '') {
         params[`search_${key}`] = searchForm[key]
       }
     })
-    
+
     const res = await getResourceData(resourceSlug, params)
-    
+
     if (res.code === 0) {
       dataSource.value = res.data.items || []
       pagination.value.total = res.data.total || 0
       pagination.value.current = page
-    } else {
+    }
+    else {
       message.error(res.msg || '获取数据失败')
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Failed to fetch data:', error)
     message.error('获取数据失败')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
 // 处理分页变化
-const handlePageChange = (page) => {
+function handlePageChange(page) {
   fetchData(page)
 }
 
 // 表格变化（分页、排序）
-const handleTableChange = (pager, _filters, sorter) => {
+function handleTableChange(pager, _filters, sorter) {
   const current = pager?.current || 1
   const size = pager?.pageSize || pagination.value.pageSize
   pagination.value.current = current
@@ -317,7 +337,8 @@ const handleTableChange = (pager, _filters, sorter) => {
   if (sorter && sorter.order) {
     orderBy.value = sorter.field || sorter.columnKey
     orderDirection.value = sorter.order === 'ascend' ? 'ASC' : 'DESC'
-  } else {
+  }
+  else {
     orderBy.value = ''
     orderDirection.value = ''
   }
@@ -325,43 +346,45 @@ const handleTableChange = (pager, _filters, sorter) => {
 }
 
 // 应用列可见性
-const applyVisibleColumns = () => {
+function applyVisibleColumns() {
   const keys = new Set(visibleKeys.value)
   columns.value = allColumns.value.filter(c => c.dataIndex === 'action' || keys.has(c.dataIndex))
 }
 
 // 处理删除
-const handleDelete = async (record) => {
+async function handleDelete(record) {
   try {
     const res = await deleteResourceRecord(resourceSlug, record.id)
-    
+
     if (res.code === 0) {
       message.success('删除成功')
       fetchData(pagination.value.current)
-    } else {
+    }
+    else {
       message.error(res.msg || '删除失败')
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Failed to delete record:', error)
     message.error('删除失败')
   }
 }
 
 // 处理编辑
-const handleEdit = (record) => {
+function handleEdit(record) {
   // 跳转到编辑页面
   router.push(`/admin/${resourceSlug}/edit/${record.id}`)
 }
 
 // 处理新增
-const handleAdd = () => {
+function handleAdd() {
   // 跳转到新增页面
   router.push(`/admin/${resourceSlug}/create`)
 }
 
 // 重置搜索表单
-const resetSearchForm = () => {
-  Object.keys(searchForm).forEach(key => {
+function resetSearchForm() {
+  Object.keys(searchForm).forEach((key) => {
     searchForm[key] = ''
   })
   quickKeyword.value = ''
@@ -370,8 +393,8 @@ const resetSearchForm = () => {
 }
 
 // 重置过滤表单
-const resetFilterForm = () => {
-  Object.keys(filterForm).forEach(key => {
+function resetFilterForm() {
+  Object.keys(filterForm).forEach((key) => {
     filterForm[key] = ''
   })
   buildActiveChips()
@@ -379,9 +402,9 @@ const resetFilterForm = () => {
 }
 
 // 搜索
-const handleSearch = () => {
+function handleSearch() {
   if (quickKeyword.value && searchableNames.value.length) {
-    searchableNames.value.forEach(name => {
+    searchableNames.value.forEach((name) => {
       searchForm[name] = quickKeyword.value
     })
   }
@@ -390,33 +413,33 @@ const handleSearch = () => {
 }
 
 // 导出数据
-const handleExport = (format) => {
+function handleExport(format) {
   // 构建导出参数
   const params = new URLSearchParams()
-  
+
   // 添加过滤参数
-  Object.keys(filterForm).forEach(key => {
+  Object.keys(filterForm).forEach((key) => {
     if (filterForm[key] !== undefined && filterForm[key] !== null && filterForm[key] !== '') {
       params.append(key, filterForm[key])
     }
   })
-  
+
   // 添加搜索参数
-  Object.keys(searchForm).forEach(key => {
+  Object.keys(searchForm).forEach((key) => {
     if (searchForm[key] !== undefined && searchForm[key] !== null && searchForm[key] !== '') {
       params.append(`search_${key}`, searchForm[key])
     }
   })
-  
+
   // 添加语言参数
   params.append('language', getCurrentLanguage())
-  
+
   // 添加导出格式
   params.append('format', format)
-  
+
   // 构建导出 URL
   const exportUrl = `/api/v1/${resourceSlug}/export?${params.toString()}`
-  
+
   // 创建下载链接并触发下载
   const link = document.createElement('a')
   link.href = exportUrl
@@ -427,15 +450,15 @@ const handleExport = (format) => {
 }
 
 // 批量删除
-const handleBatchDelete = async () => {
+async function handleBatchDelete() {
   if (selectedRowKeys.value.length === 0) {
     message.warning('请先选择要删除的记录')
     return
   }
-  
+
   try {
     const res = await deleteResourceRecords(resourceSlug, selectedRowKeys.value)
-    
+
     if (res.code === 0) {
       message.success('批量删除成功')
       // 清空选择
@@ -443,10 +466,12 @@ const handleBatchDelete = async () => {
       selectedRows.value = []
       // 重新加载数据
       fetchData(pagination.value.current)
-    } else {
+    }
+    else {
       message.error(res.msg || '批量删除失败')
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Failed to batch delete records:', error)
     message.error('批量删除失败')
   }
@@ -457,11 +482,11 @@ const rowSelection = {
   onChange: (selectedRowKeysValue, selectedRowsValue) => {
     selectedRowKeys.value = selectedRowKeysValue
     selectedRows.value = selectedRowsValue
-  }
+  },
 }
 
 // 触发动作（无参或批量）
-const triggerAction = async (action) => {
+async function triggerAction(action) {
   // 若是批量动作必须选择行
   const ids = action.bulk ? selectedRowKeys.value : []
   if (action.bulk && ids.length === 0) {
@@ -477,30 +502,31 @@ const actionModalDef = ref(null)
 const actionModalModel = reactive({})
 const actionModalIds = ref([])
 
-const openActionModal = (action, ids) => {
+function openActionModal(action, ids) {
   actionModalDef.value = action
   actionModalIds.value = ids
   // 初始化参数模型
   Object.keys(actionModalModel).forEach(k => delete actionModalModel[k])
-  ;(action.form_fields || []).forEach(f => {
+  ;(action.form_fields || []).forEach((f) => {
     actionModalModel[f.name] = undefined
   })
   actionModalVisible.value = true
 }
-const submitActionModal = async () => {
+async function submitActionModal() {
   const params = { ...actionModalModel }
   const res = await runResourceAction(resourceSlug, actionModalDef.value.name, { ids: actionModalIds.value, params })
   if (res.code === 0) {
     message.success('操作成功')
     actionModalVisible.value = false
     fetchData(pagination.value.current)
-  } else {
+  }
+  else {
     message.error(res.message || '操作失败')
   }
 }
 
 // 运行动作（行级或批量）
-const runAction = async (action, record, idsOverride) => {
+async function runAction(action, record, idsOverride) {
   const ids = idsOverride ?? (record ? [record.id] : [])
   if (action.form_fields && action.form_fields.length) {
     openActionModal(action, ids)
@@ -510,18 +536,19 @@ const runAction = async (action, record, idsOverride) => {
   if (res.code === 0) {
     message.success('操作成功')
     fetchData(pagination.value.current)
-  } else {
+  }
+  else {
     message.error(res.message || '操作失败')
   }
 }
 
 const { hasPermission } = useAccess()
-const canShowAction = (act) => {
+function canShowAction(act) {
   return hasPermission(act.permission)
 }
 
 // 渲染动作表单字段控件（与表单页简化对齐）
-const getFormComponent = (field) => {
+function getFormComponent(field) {
   switch (field.type) {
     case 'boolean':
       return 'a-switch'
@@ -552,13 +579,13 @@ onMounted(() => {
         <a-form-item>
           <a-input-search v-model:value="quickKeyword" placeholder="快速搜索" enter-button @search="handleSearch" />
         </a-form-item>
-        <!-- 精确搜索字段（可选显示）-->
+        <!-- 精确搜索字段（可选显示） -->
         <template v-for="name in searchableNames" :key="name">
-          <a-form-item :label="(resourceConfig?.fields || []).find(f=>f.name===name)?.label" v-show="false">
-            <a-input v-model:value="searchForm[name]" :placeholder="`搜索${(resourceConfig?.fields || []).find(f=>f.name===name)?.label}`" allow-clear />
+          <a-form-item v-show="false" :label="(resourceConfig?.fields || []).find(f => f.name === name)?.label">
+            <a-input v-model:value="searchForm[name]" :placeholder="`搜索${(resourceConfig?.fields || []).find(f => f.name === name)?.label}`" allow-clear />
           </a-form-item>
         </template>
-        
+
         <!-- 过滤字段 -->
         <template v-for="f in filterDefs" :key="f.name">
           <a-form-item :label="f.label">
@@ -569,9 +596,9 @@ onMounted(() => {
                 style="width: 160px"
                 allow-clear
               >
-                <a-select-option 
-                  v-for="opt in f.options" 
-                  :key="opt.value" 
+                <a-select-option
+                  v-for="opt in f.options"
+                  :key="opt.value"
                   :value="opt.value"
                 >
                   {{ opt.label }}
@@ -585,8 +612,12 @@ onMounted(() => {
                 style="width: 120px"
                 allow-clear
               >
-                <a-select-option :value="true">是</a-select-option>
-                <a-select-option :value="false">否</a-select-option>
+                <a-select-option :value="true">
+                  是
+                </a-select-option>
+                <a-select-option :value="false">
+                  否
+                </a-select-option>
               </a-select>
             </template>
             <template v-else>
@@ -594,11 +625,15 @@ onMounted(() => {
             </template>
           </a-form-item>
         </template>
-        
+
         <a-form-item>
-          <a-button type="primary" @click="handleSearch">搜索</a-button>
-          <a-button style="margin-left: 8px" @click="resetSearchForm">重置</a-button>
-          
+          <a-button type="primary" @click="handleSearch">
+            搜索
+          </a-button>
+          <a-button style="margin-left: 8px" @click="resetSearchForm">
+            重置
+          </a-button>
+
           <!-- 导出按钮 -->
           <a-dropdown v-if="resourceConfig?.exportable !== false" style="margin-left: 8px">
             <template #overlay>
@@ -615,33 +650,45 @@ onMounted(() => {
               导出 <DownOutlined />
             </a-button>
           </a-dropdown>
-          
+
           <!-- 语言切换 -->
           <a-dropdown style="margin-left: 8px">
             <template #overlay>
               <a-menu @click="({ key }) => { localStorage.setItem('admin-language', key); location.reload(); }">
-                <a-menu-item key="zh-CN">中文</a-menu-item>
-                <a-menu-item key="en">English</a-menu-item>
+                <a-menu-item key="zh-CN">
+                  中文
+                </a-menu-item>
+                <a-menu-item key="en">
+                  English
+                </a-menu-item>
               </a-menu>
             </template>
             <a-button>
               语言 <DownOutlined />
             </a-button>
           </a-dropdown>
-          
+
           <!-- 保存筛选器 -->
           <a-dropdown style="margin-left: 8px">
             <template #overlay>
               <a-menu style="width: 260px; padding: 8px 12px">
-                <div style="font-weight: 500; margin-bottom: 8px">保存当前筛选</div>
+                <div style="font-weight: 500; margin-bottom: 8px">
+                  保存当前筛选
+                </div>
                 <a-input v-model:value="savedFilterName" placeholder="筛选器名称" />
-                <a-button type="primary" size="small" style="margin-top: 8px" @click="saveCurrentFilter">保存</a-button>
-                <div style="font-weight: 500; margin: 12px 0 8px">已保存</div>
+                <a-button type="primary" size="small" style="margin-top: 8px" @click="saveCurrentFilter">
+                  保存
+                </a-button>
+                <div style="font-weight: 500; margin: 12px 0 8px">
+                  已保存
+                </div>
                 <a-empty v-if="!savedFilters.length" description="暂无" />
                 <div v-else>
                   <div v-for="it in savedFilters" :key="it.name" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
                     <a @click="applySavedFilter(it.name)">{{ it.name }}</a>
-                    <a-button type="link" danger size="small" @click.stop="deleteSavedFilter(it.name)">删除</a-button>
+                    <a-button type="link" danger size="small" @click.stop="deleteSavedFilter(it.name)">
+                      删除
+                    </a-button>
                   </div>
                 </div>
               </a-menu>
@@ -653,19 +700,31 @@ onMounted(() => {
           <a-dropdown style="margin-left: 8px">
             <template #overlay>
               <a-menu style="width: 220px; padding: 8px 12px">
-                <div style="margin-bottom: 8px; font-weight: 500">列可见性</div>
+                <div style="margin-bottom: 8px; font-weight: 500">
+                  列可见性
+                </div>
                 <a-checkbox-group v-model:value="visibleKeys" @change="applyVisibleColumns">
-                  <a-row :gutter="[8,8]">
-                    <a-col :span="24" v-for="c in allColumns.filter(x=>x.dataIndex!=='action')" :key="c.key">
-                      <a-checkbox :value="c.dataIndex">{{ c.title }}</a-checkbox>
+                  <a-row :gutter="[8, 8]">
+                    <a-col v-for="c in allColumns.filter(x => x.dataIndex !== 'action')" :key="c.key" :span="24">
+                      <a-checkbox :value="c.dataIndex">
+                        {{ c.title }}
+                      </a-checkbox>
                     </a-col>
                   </a-row>
                 </a-checkbox-group>
-                <div style="margin: 12px 0 8px; font-weight: 500">密度</div>
+                <div style="margin: 12px 0 8px; font-weight: 500">
+                  密度
+                </div>
                 <a-radio-group v-model:value="tableSize">
-                  <a-radio-button value="small">紧凑</a-radio-button>
-                  <a-radio-button value="middle">中等</a-radio-button>
-                  <a-radio-button value="default">宽松</a-radio-button>
+                  <a-radio-button value="small">
+                    紧凑
+                  </a-radio-button>
+                  <a-radio-button value="middle">
+                    中等
+                  </a-radio-button>
+                  <a-radio-button value="default">
+                    宽松
+                  </a-radio-button>
                 </a-radio-group>
               </a-menu>
             </template>
@@ -677,20 +736,22 @@ onMounted(() => {
       <!-- 筛选器徽章（chips） -->
       <div v-if="activeChips.length" style="margin: -8px 0 8px 0">
         <a-space wrap>
-          <a-tag v-for="chip in activeChips" :key="chip.key" closable @close="() => { if (chip.type==='search') searchForm[chip.name]=''; else filterForm[chip.name]=''; buildActiveChips(); fetchData(1); }">
+          <a-tag v-for="chip in activeChips" :key="chip.key" closable @close="() => { if (chip.type === 'search') searchForm[chip.name] = ''; else filterForm[chip.name] = ''; buildActiveChips(); fetchData(1); }">
             {{ chip.label }}
           </a-tag>
         </a-space>
       </div>
-      
+
       <template #extra>
         <a-space>
-          <a-button v-if="resourceConfig?.creatable" type="primary" @click="handleAdd">新增</a-button>
-          <!-- 头部动作（示例：批量动作）-->
+          <a-button v-if="resourceConfig?.creatable" type="primary" @click="handleAdd">
+            新增
+          </a-button>
+          <!-- 头部动作（示例：批量动作） -->
           <a-dropdown v-if="(resourceConfig?.actions || []).some(a => canShowAction(a))">
             <template #overlay>
               <a-menu>
-                <a-menu-item v-for="act in resourceConfig.actions.filter(a=>canShowAction(a))" :key="act.name" @click="triggerAction(act)">
+                <a-menu-item v-for="act in resourceConfig.actions.filter(a => canShowAction(a))" :key="act.name" @click="triggerAction(act)">
                   <span>{{ act.label }}</span>
                 </a-menu-item>
               </a-menu>
@@ -699,8 +760,9 @@ onMounted(() => {
           </a-dropdown>
         </a-space>
       </template>
-      
+
       <a-table
+        v-if="resourceSlug !== 'dashboard'"
         row-key="id"
         :loading="loading"
         :columns="columns"
@@ -712,46 +774,53 @@ onMounted(() => {
           total: pagination.total,
           onChange: handlePageChange,
           showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50', '100']
+          pageSizeOptions: ['10', '20', '50', '100'],
         }"
-        @change="handleTableChange"
         :row-selection="rowSelection"
-        v-if="resourceSlug !== 'dashboard'"
+        @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'action'">
             <div class="flex gap-2">
-              <template v-for="act in (resourceConfig?.actions || []).filter(a=>canShowAction(a))" :key="act.name">
+              <template v-for="act in (resourceConfig?.actions || []).filter(a => canShowAction(a))" :key="act.name">
                 <template v-if="canShowAction(act)">
                   <a-popconfirm v-if="act.confirm" :title="act.confirm" ok-text="确定" cancel-text="取消" @confirm="() => runAction(act, record)">
-                    <a-button type="link">{{ act.label }}</a-button>
+                    <a-button type="link">
+                      {{ act.label }}
+                    </a-button>
                   </a-popconfirm>
-                  <a-button v-else type="link" @click="runAction(act, record)">{{ act.label }}</a-button>
+                  <a-button v-else type="link" @click="runAction(act, record)">
+                    {{ act.label }}
+                  </a-button>
                 </template>
               </template>
             </div>
           </template>
         </template>
       </a-table>
-      
+
       <!-- 动作参数对话框 -->
       <a-modal v-model:open="actionModalVisible" :title="actionModalDef?.label || '动作'" @ok="submitActionModal">
         <a-form label-col="{ span: 6 }" wrapper-col="{ span: 16 }">
-          <a-form-item v-for="f in (actionModalDef?.form_fields||[])" :key="f.name" :label="f.label">
+          <a-form-item v-for="f in (actionModalDef?.form_fields || [])" :key="f.name" :label="f.label">
             <component :is="getFormComponent(f)" v-model:value="actionModalModel[f.name]" :placeholder="`请输入${f.label}`" />
           </a-form-item>
         </a-form>
       </a-modal>
-      
+
       <!-- 批量操作栏 -->
-      <div class="batch-actions" v-if="selectedRowKeys.length > 0">
+      <div v-if="selectedRowKeys.length > 0" class="batch-actions">
         <div class="batch-info">
           已选择 {{ selectedRowKeys.length }} 项
-          <a-button type="link" @click="selectedRowKeys = []">取消选择</a-button>
+          <a-button type="link" @click="selectedRowKeys = []">
+            取消选择
+          </a-button>
         </div>
         <a-space>
           <a-popconfirm v-if="resourceConfig?.deletable !== false" title="确定删除选中的数据？" ok-text="确定" cancel-text="取消" @confirm="handleBatchDelete">
-            <a-button type="primary" danger>批量删除</a-button>
+            <a-button type="primary" danger>
+              批量删除
+            </a-button>
           </a-popconfirm>
           <a-dropdown v-if="(resourceConfig?.actions || []).some(a => a.bulk && canShowAction(a))">
             <template #overlay>

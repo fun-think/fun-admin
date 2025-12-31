@@ -6,6 +6,7 @@ import (
 	"fun-admin/internal/model"
 	"fun-admin/internal/repository"
 
+	"golang.org/x/crypto/bcrypt"
 	"go.uber.org/zap"
 )
 
@@ -48,17 +49,24 @@ func (s *ProfileService) UpdateProfile(ctx context.Context, userID uint, updates
 
 // UpdatePassword 更新用户密码
 func (s *ProfileService) UpdatePassword(ctx context.Context, userID uint, oldPassword, newPassword string) error {
-	// 验证用户存在
+	// 验证用户存在并获取用户信息
 	user, err := s.profileRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// 验证旧密码（简化处理，实际应该使用密码哈希比较）
-	if user.Password != oldPassword {
+	// 验证旧密码
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword))
+	if err != nil {
 		return errors.New("旧密码不正确")
 	}
 
-	// 更新密码（此处未加密，实际项目中应该加密处理）
-	return s.profileRepo.UpdatePassword(ctx, userID, newPassword)
+	// 对新密码进行哈希处理
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("密码加密失败")
+	}
+
+	// 更新密码
+	return s.profileRepo.UpdatePassword(ctx, userID, string(hashedPassword))
 }
