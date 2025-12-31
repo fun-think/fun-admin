@@ -1,4 +1,4 @@
-import { useGet, usePost, usePut } from '~/utils/request'
+import { useGet, usePost, usePut, useDelete } from '~/utils/request'
 
 // 获取用户权限
 export async function getUserPermissions() {
@@ -28,4 +28,9 @@ export async function addUserRole(user, role) {
 // 删除用户角色
 export async function deleteUserRole(user, role) {
   return useDelete('/api/admin/permissions/user', {}, { params: { user, role } })
+}
+
+// 获取所有角色
+export async function getAllRoles() {
+  return useGet('/api/admin/roles/all')
 }

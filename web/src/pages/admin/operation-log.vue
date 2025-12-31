@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useRequest } from 'vue-request'
-import axios from 'axios'
+import { getOperationLogs, deleteOperationLog, deleteOperationLogs } from '~/api/operation-log.js'
 import { Card, Row, Col, Table, Form, Input, Select, Button, Popconfirm, message } from 'ant-design-vue'
 
 // 操作日志数据
@@ -32,7 +32,7 @@ const fetchOperationLogs = async (page = 1) => {
       action: searchForm.value.action
     }
     
-    const res = await axios.get('/api/admin/operation-logs', { params })
+    const res = await getOperationLogs(params)
     
     if (res.data.code === 0) {
       operationLogs.value = res.data.data.items || []
@@ -70,7 +70,7 @@ const handleReset = () => {
 // 删除操作日志
 const handleDelete = async (id) => {
   try {
-    const res = await axios.delete(`/api/admin/operation-logs/${id}`)
+    const res = await deleteOperationLog(id)
     
     if (res.data.code === 0) {
       message.success('删除成功')
@@ -93,9 +93,7 @@ const handleBatchDelete = async () => {
   }
   
   try {
-    const res = await axios.delete('/api/admin/operation-logs', {
-      data: { ids: selectedRowKeys.value }
-    })
+    const res = await deleteOperationLogs({ ids: selectedRowKeys.value })
     
     if (res.data.code === 0) {
       message.success('批量删除成功')

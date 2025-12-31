@@ -33,8 +33,8 @@ import {
   cancelImportTask,
   retryImportTask,
   getFieldMapping
-} from '~/api/common/import.js'
-import { getResourceList } from '~/api/admin/resources.js'
+} from '~/api/import.js'
+import { getResourceList } from '~/api/resources.js'
 
 const route = useRoute()
 const router = useRouter()

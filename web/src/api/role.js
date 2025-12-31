@@ -10,7 +10,7 @@ export async function createRole(data) {
   return usePost('/api/admin/roles', data)
 }
 
-// 获取角色详情 (注意：后端未提供单独获取角色详情的接口，这里暂时使用获取列表接口)
+// 获取角色详情
 export async function getRole(id) {
   return useGet(`/api/admin/roles/${id}`)
 }
