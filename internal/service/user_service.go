@@ -49,7 +49,8 @@ func (s *userService) UserUpdate(ctx context.Context, req *v1.UserUpdateRequest)
 		}
 		password = string(hash)
 	}
-	return s.userRepository.UserUpdate(ctx, &model.User{
+
+	err := s.userRepository.UserUpdate(ctx, &model.User{
 		Email:    req.Email,
 		Nickname: req.Nickname,
 		Password: password,
@@ -59,6 +60,35 @@ func (s *userService) UserUpdate(ctx context.Context, req *v1.UserUpdateRequest)
 			ID: req.ID,
 		},
 	})
+	if err != nil {
+		return err
+	}
+
+	// 更新角色
+	if req.Roles != nil {
+		userIdStr := uint64ToString(uint64(req.ID))
+		// 先获取现有角色
+		existingRoles, err := s.permissionRepository.GetRolesForUser(ctx, userIdStr)
+		if err != nil {
+			return err
+		}
+
+		// 删除现有角色
+		for _, role := range existingRoles {
+			if _, err := s.permissionRepository.DeleteRoleForUser(ctx, userIdStr, role); err != nil {
+				return err
+			}
+		}
+
+		// 添加新角色
+		for _, role := range req.Roles {
+			if _, err := s.permissionRepository.AddRoleForUser(ctx, userIdStr, role); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *userService) UserCreate(ctx context.Context, req *v1.UserCreateRequest) error {
@@ -66,13 +96,28 @@ func (s *userService) UserCreate(ctx context.Context, req *v1.UserCreateRequest)
 	if err != nil {
 		return err
 	}
-	return s.userRepository.UserCreate(ctx, &model.User{
+	user := &model.User{
 		Email:    req.Email,
 		Nickname: req.Nickname,
 		Password: string(hash),
 		Phone:    req.Phone,
 		Username: req.Username,
-	})
+	}
+	if err := s.userRepository.UserCreate(ctx, user); err != nil {
+		return err
+	}
+
+	// 分配角色
+	if len(req.Roles) > 0 {
+		userIdStr := uint64ToString(uint64(user.ID))
+		for _, role := range req.Roles {
+			if _, err := s.permissionRepository.AddRoleForUser(ctx, userIdStr, role); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *userService) UserDelete(ctx context.Context, id uint) error {
